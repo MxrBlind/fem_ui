@@ -1,0 +1,17 @@
+.DS_Store
+.worktrees/
+.idea/
+.vscode/
+packages/
+openspec/
+docs/
+ai-specs/
+.cursor/
+.claude/
+AGENTS.md
+CLAUDE.md
+codex.md
+GEMINI.md
+node_modules/
+.angular/
+dist/
