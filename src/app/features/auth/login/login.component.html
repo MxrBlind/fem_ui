@@ -1,0 +1,69 @@
+<div class="login-page">
+  <mat-card class="login-card" appearance="outlined">
+    <div class="login-card__logo">
+      <img src="assets/fem-logo.svg" alt="FEM" width="64" height="64" />
+    </div>
+
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Usuario</mat-label>
+        <input
+          #usernameInput
+          matInput
+          type="text"
+          formControlName="username"
+          autocomplete="username"
+          required
+        />
+        @if (loginForm.controls.username.touched && loginForm.controls.username.hasError('required')) {
+          <mat-error>El usuario es obligatorio.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Contraseña</mat-label>
+        <input
+          #passwordInput
+          matInput
+          [type]="passwordVisible() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+          required
+          minlength="4"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="togglePasswordVisibility()"
+          [attr.aria-label]="'Mostrar/Ocultar contraseña'"
+          [attr.aria-pressed]="passwordVisible()"
+        >
+          <mat-icon>{{ passwordVisible() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        @if (loginForm.controls.password.touched && loginForm.controls.password.hasError('required')) {
+          <mat-error>La contraseña es obligatoria.</mat-error>
+        }
+        @if (loginForm.controls.password.touched && loginForm.controls.password.hasError('minlength')) {
+          <mat-error>La contraseña debe tener al menos 4 caracteres.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="login-card__actions">
+        <a mat-button type="button" (click)="onRegister()">Regístrate</a>
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          [disabled]="loginForm.invalid || submitting()"
+        >
+          @if (submitting()) {
+            <mat-progress-spinner mode="indeterminate" diameter="20"></mat-progress-spinner>
+          } @else {
+            <span>Entrar</span>
+          }
+        </button>
+      </div>
+    </form>
+  </mat-card>
+</div>
