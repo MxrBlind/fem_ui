@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -12,7 +11,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { finalize } from 'rxjs/operators';
 
 import { AuthService } from '../../../core/services/auth.service';
-import { TokenStorageService } from '../../../core/services/token-storage.service';
 
 @Component({
   selector: 'app-login',
@@ -34,8 +32,6 @@ import { TokenStorageService } from '../../../core/services/token-storage.servic
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
-  private readonly tokenStorage = inject(TokenStorageService);
-  private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
 
   protected readonly submitting = signal(false);
@@ -68,10 +64,10 @@ export class LoginComponent {
       .login(credentials)
       .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
-        next: (res) => {
-          this.tokenStorage.saveToken(res.token, res.expirationDate);
+        next: () => {
+          // AuthService.login() handles token storage, profile fetch, and
+          // role-home navigation.
           this.snackBar.open('Sesión iniciada', undefined, { duration: 2000 });
-          this.router.navigateByUrl('/');
         },
         error: (err: HttpErrorResponse) => {
           if (err.status === 401 || err.status === 403) {
