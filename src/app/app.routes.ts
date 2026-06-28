@@ -1,12 +1,18 @@
 import { Routes } from '@angular/router';
 
-import { loginRedirectGuard } from './core/auth/auth.guards';
+import { authGuard, loginRedirectGuard } from './core/auth/auth.guards';
 
 export const routes: Routes = [
   {
+    path: '',
+    canMatch: [authGuard],
+    loadComponent: () => import('./features/shell/shell.component').then((m) => m.ShellComponent),
+    loadChildren: () => import('./features/shell/shell.routes').then((r) => r.SHELL_ROUTES),
+  },
+  {
     path: 'login',
     canMatch: [loginRedirectGuard],
-    loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent)
+    loadComponent: () => import('./features/auth/login/login.component').then((m) => m.LoginComponent),
   },
-  { path: '', redirectTo: 'login', pathMatch: 'full' }
+  { path: '', redirectTo: 'login', pathMatch: 'full' },
 ];

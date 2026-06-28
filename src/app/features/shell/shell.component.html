@@ -1,0 +1,55 @@
+<mat-toolbar color="primary">
+  <button
+    mat-icon-button
+    aria-label="Toggle navigation"
+    (click)="toggleSidenav()"
+  >
+    <mat-icon>menu</mat-icon>
+  </button>
+
+  <span class="toolbar-title">FEM - Control escolar</span>
+
+  <button
+    mat-button
+    [matMenuTriggerFor]="profileMenu"
+    aria-label="User profile menu"
+  >
+    <mat-icon>account_circle</mat-icon>
+    @if (user(); as u) {
+      {{ u.username }}
+    }
+  </button>
+
+  <mat-menu #profileMenu="matMenu">
+    <button mat-menu-item (click)="onProfileAction('perfil')">Mi perfil</button>
+    <button mat-menu-item (click)="onProfileAction('salir')">Salir</button>
+  </mat-menu>
+</mat-toolbar>
+
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav mode="side" [opened]="sidenavOpen()">
+    <mat-nav-list>
+      <ng-container *hasRole="['admin', 'teacher', 'student']">
+        <p class="nav-section-header">Ciclo escolar</p>
+
+        <a mat-list-item routerLink="" *hasRole="['admin']">Ciclo actual</a>
+        <a mat-list-item routerLink="" *hasRole="['admin', 'teacher']">Inscripciones</a>
+        <a mat-list-item routerLink="" *hasRole="['admin']">Ciclos</a>
+        <a mat-list-item routerLink="" *hasRole="['student']">Calificaciones</a>
+      </ng-container>
+
+      <ng-container *hasRole="['admin']">
+        <mat-divider />
+        <p class="nav-section-header">Catálogos</p>
+
+        <a mat-list-item routerLink="">Maestros</a>
+        <a mat-list-item routerLink="">Estudiantes</a>
+        <a mat-list-item routerLink="">Materias</a>
+      </ng-container>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>
