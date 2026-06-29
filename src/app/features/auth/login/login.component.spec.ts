@@ -8,7 +8,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { AuthService } from '../../../core/services/auth.service';
-import { TokenStorageService } from '../../../core/services/token-storage.service';
 import { LoginComponent } from './login.component';
 
 describe('LoginComponent', () => {
@@ -95,10 +94,10 @@ describe('LoginComponent', () => {
     expect(getInput('password').type).toBe('password');
   });
 
-  it('on success stores token and navigates to /', async () => {
-    const navigateSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
-    const tokenStorage = TestBed.inject(TokenStorageService);
-    authSpy.login.mockReturnValue(of({ token: 'tok', type: 'Bearer', expirationDate: '2026-12-31T00:00:00Z' }));
+  it('on success delegates to AuthService.login() and shows success snackbar', async () => {
+    // AuthService.login() now owns token storage AND role-home navigation;
+    // the component just reacts to success/error for UX.
+    authSpy.login.mockReturnValue(of({ id: 1, username: 'alice', role: 'admin', rawRole: 'admin' }));
 
     setValue('username', 'alice');
     setValue('password', 'pass1');
@@ -107,14 +106,10 @@ describe('LoginComponent', () => {
     fixture.detectChanges();
 
     expect(authSpy.login).toHaveBeenCalledWith({ username: 'alice', password: 'pass1' });
-    expect(tokenStorage.getToken()).toBe('tok');
-    expect(tokenStorage.getExpiresAt()).toBe('2026-12-31T00:00:00Z');
-    expect(navigateSpy).toHaveBeenCalledWith('/');
     expect(snackBarOpen).toHaveBeenCalledWith('Sesión iniciada', undefined, { duration: 2000 });
   });
 
-  it('on 401 shows error snackbar, clears password, preserves username, no token written', async () => {
-    const tokenStorage = TestBed.inject(TokenStorageService);
+  it('on 401 shows error snackbar, clears password, preserves username', async () => {
     authSpy.login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401, statusText: 'Unauthorized' })));
 
     setValue('username', 'alice');
@@ -130,11 +125,9 @@ describe('LoginComponent', () => {
     );
     expect(getInput('username').value).toBe('alice');
     expect(getInput('password').value).toBe('');
-    expect(tokenStorage.getToken()).toBeNull();
   });
 
   it('on 403 treats as wrong credentials (Spring Security default)', async () => {
-    const tokenStorage = TestBed.inject(TokenStorageService);
     authSpy.login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403, statusText: 'Forbidden' })));
     setValue('username', 'alice');
     setValue('password', 'pass1');
@@ -147,7 +140,6 @@ describe('LoginComponent', () => {
     );
     expect(getInput('username').value).toBe('alice');
     expect(getInput('password').value).toBe('');
-    expect(tokenStorage.getToken()).toBeNull();
   });
 
   it('on non-credential error shows generic Spanish snackbar', async () => {

@@ -1,50 +1,144 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+
 import { environment } from '../../../environments/environment';
-import { JwtResponse } from '../models/auth.model';
+import { UserDto } from '../models/auth.model';
 import { AuthService } from './auth.service';
+import { TokenStorageService } from './token-storage.service';
+
+const TOKEN_URL = `${environment.apiBaseUrl}/public/token`;
+const ME_URL = `${environment.apiBaseUrl}/api/user/me`;
+
+function userDto(overrides: Partial<UserDto> = {}, roleName: string | null = 'admin'): UserDto {
+  return {
+    id: 1,
+    username: 'alice',
+    role: roleName === null ? null : { id: 10, name: roleName },
+    ...overrides
+  };
+}
 
 describe('AuthService', () => {
   let service: AuthService;
   let httpMock: HttpTestingController;
+  let router: Router;
+  let tokenStorage: TokenStorageService;
+  let navigateSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])]
     });
     service = TestBed.inject(AuthService);
     httpMock = TestBed.inject(HttpTestingController);
+    router = TestBed.inject(Router);
+    tokenStorage = TestBed.inject(TokenStorageService);
+    navigateSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true) as never;
+    localStorage.clear();
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    httpMock.verify();
+    localStorage.clear();
+  });
 
-  it('issues POST to /public/token with body and no Authorization header', async () => {
-    const credentials = { username: 'alice', password: 'secret' };
-    const expected: JwtResponse = { token: 't', type: 'Bearer', expirationDate: 'e' };
-    const promise = firstValueFrom(service.login(credentials));
+  it('posts to /public/token without Authorization, then fetches /me and populates currentUser', async () => {
+    const promise = firstValueFrom(service.login({ username: 'alice', password: 'pass1' }));
 
-    const req = httpMock.expectOne(`${environment.apiBaseUrl}/public/token`);
-    expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual(credentials);
-    expect(req.request.headers.has('Authorization')).toBe(false);
-    req.flush(expected);
+    const tokenReq = httpMock.expectOne(TOKEN_URL);
+    expect(tokenReq.request.method).toBe('POST');
+    expect(tokenReq.request.headers.has('Authorization')).toBe(false);
+    tokenReq.flush({ token: 'tok', type: 'Bearer', expirationDate: '2099-12-31T00:00:00Z' });
+
+    const meReq = httpMock.expectOne(ME_URL);
+    expect(meReq.request.method).toBe('GET');
+    meReq.flush(userDto({}, 'admin'));
+
     await promise;
+
+    expect(tokenStorage.getToken()).toBe('tok');
+    expect(service.currentUser()?.role).toBe('admin');
+    expect(navigateSpy).toHaveBeenCalledWith('/dashboard');
   });
 
-  it('returns typed JwtResponse on 200', async () => {
-    const expected: JwtResponse = { token: 'abc', type: 'Bearer', expirationDate: '2026-12-31T00:00:00Z' };
+  it('navigates a teacher to /courses (single-role landing)', async () => {
+    const promise = firstValueFrom(service.login({ username: 't', password: 't' }));
+    httpMock.expectOne(TOKEN_URL).flush({ token: 'tok', type: 'Bearer', expirationDate: 'e' });
+    httpMock.expectOne(ME_URL).flush(userDto({}, 'teacher'));
+    await promise;
+    expect(navigateSpy).toHaveBeenCalledWith('/courses');
+  });
+
+  it('treats null/unknown role as unauthorized → clears state and redirects to /login', async () => {
     const promise = firstValueFrom(service.login({ username: 'a', password: 'b' }));
-    httpMock.expectOne(`${environment.apiBaseUrl}/public/token`).flush(expected);
-    await expect(promise).resolves.toEqual(expected);
+    httpMock.expectOne(TOKEN_URL).flush({ token: 'tok', type: 'Bearer', expirationDate: 'e' });
+    httpMock.expectOne(ME_URL).flush(userDto({}, 'mystery-role'));
+    await promise;
+
+    expect(service.currentUser()).toBeNull();
+    expect(tokenStorage.getToken()).toBeNull();
+    expect(navigateSpy).toHaveBeenCalledWith('/login', expect.objectContaining({ state: expect.any(Object) }));
   });
 
-  it('propagates 401 as error', async () => {
+  it('normalizes role casing, whitespace, and Spring "ROLE_" prefix', async () => {
+    const promise = firstValueFrom(service.login({ username: 'a', password: 'b' }));
+    httpMock.expectOne(TOKEN_URL).flush({ token: 'tok', type: 'Bearer', expirationDate: 'e' });
+    httpMock.expectOne(ME_URL).flush(userDto({}, '  ROLE_ADMIN  '));
+    await promise;
+    expect(service.currentUser()?.role).toBe('admin');
+    expect(service.currentUser()?.rawRole).toBe('admin');
+  });
+
+  it('logout() clears state, removes token, navigates to /login', () => {
+    tokenStorage.saveToken('tok', '2099-01-01T00:00:00Z');
+    service.logout();
+    expect(service.currentUser()).toBeNull();
+    expect(tokenStorage.getToken()).toBeNull();
+    expect(navigateSpy).toHaveBeenCalledWith('/login');
+  });
+
+  it('late /me resolving after logout does NOT repopulate currentUser', async () => {
+    const promise = firstValueFrom(service.login({ username: 'a', password: 'b' })).catch(() => null);
+    httpMock.expectOne(TOKEN_URL).flush({ token: 'tok', type: 'Bearer', expirationDate: 'e' });
+    const meReq = httpMock.expectOne(ME_URL);
+
+    service.logout();
+    meReq.flush(userDto({}, 'admin'));
+    await promise;
+
+    expect(service.currentUser()).toBeNull();
+  });
+
+  it('hasRole supports string and array forms (OR-semantics)', async () => {
+    const promise = firstValueFrom(service.login({ username: 'a', password: 'b' }));
+    httpMock.expectOne(TOKEN_URL).flush({ token: 'tok', type: 'Bearer', expirationDate: 'e' });
+    httpMock.expectOne(ME_URL).flush(userDto({}, 'teacher'));
+    await promise;
+
+    expect(service.hasRole('teacher')).toBe(true);
+    expect(service.hasRole('admin')).toBe(false);
+    expect(service.hasRole(['admin', 'teacher'])).toBe(true);
+    expect(service.hasRole(['admin', 'student'])).toBe(false);
+  });
+
+  it('propagates 401 from /public/token to caller', async () => {
     const promise = firstValueFrom(service.login({ username: 'a', password: 'b' }));
     httpMock
-      .expectOne(`${environment.apiBaseUrl}/public/token`)
-      .flush({ message: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
-    await expect(promise).rejects.toMatchObject({ status: 401 });
+      .expectOne(TOKEN_URL)
+      .flush({ message: 'nope' }, { status: 401, statusText: 'Unauthorized' });
+    await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
+
+  it('refreshProfile() de-duplicates concurrent callers (single /me)', async () => {
+    tokenStorage.saveToken('tok', '2099-01-01T00:00:00Z');
+    const p1 = service.refreshProfile();
+    const p2 = service.refreshProfile();
+    expect(p1).toBe(p2);
+    httpMock.expectOne(ME_URL).flush(userDto({}, 'admin'));
+    await Promise.all([p1, p2]);
+    expect(service.currentUser()?.role).toBe('admin');
   });
 });
