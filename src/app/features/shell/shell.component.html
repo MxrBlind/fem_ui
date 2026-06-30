@@ -32,7 +32,7 @@
       <ng-container *hasRole="['admin', 'teacher', 'student']">
         <p class="nav-section-header">Ciclo escolar</p>
 
-        <a mat-list-item routerLink="" *hasRole="['admin']">Ciclo actual</a>
+        <a mat-list-item routerLink="/ciclo-actual" routerLinkActive="active" *hasRole="['admin', 'teacher']">Ciclo actual</a>
         <a mat-list-item routerLink="" *hasRole="['admin', 'teacher']">Inscripciones</a>
         <a mat-list-item routerLink="" *hasRole="['admin']">Ciclos</a>
         <a mat-list-item routerLink="" *hasRole="['student']">Calificaciones</a>

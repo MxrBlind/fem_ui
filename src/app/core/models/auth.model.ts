@@ -15,10 +15,23 @@ export interface RoleDto {
   description?: string;
 }
 
+export interface ProfileDto {
+  id?: number;
+  parentLastName?: string;
+  motherLastName?: string;
+  name?: string;
+  email?: string;
+  birthDate?: string;
+  address?: string;
+  phone?: string;
+  church?: string;
+}
+
 export interface UserDto {
   id: number;
   username: string;
   active?: boolean;
   status?: string;
+  profile?: ProfileDto;
   role?: RoleDto | null;
 }
