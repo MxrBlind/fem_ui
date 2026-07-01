@@ -4,7 +4,10 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { EnrollmentDto } from '../../features/enrollments/models/enrollment.model';
+import {
+  CreateEnrollmentRequest,
+  EnrollmentDto,
+} from '../../features/enrollments/models/enrollment.model';
 import { EnrollmentService, toRow } from './enrollment.service';
 
 function buildDto(overrides: Partial<EnrollmentDto> = {}): EnrollmentDto {
@@ -65,6 +68,33 @@ describe('EnrollmentService', () => {
       .expectOne(`${environment.apiBaseUrl}/api/enrollment`)
       .flush('boom', { status: 500, statusText: 'Server Error' });
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
+
+  describe('create()', () => {
+    const payload: CreateEnrollmentRequest = {
+      student: { id: 42 },
+      course: { id: 7 },
+      scholarshipPercent: 25,
+      active: true,
+    };
+
+    it('issues POST /api/enrollment with the payload and returns the created DTO', async () => {
+      const created = buildDto({ id: 99, scholarshipPercent: 25 });
+      const promise = firstValueFrom(service.create(payload));
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/enrollment`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(payload);
+      req.flush(created);
+      await expect(promise).resolves.toEqual(created);
+    });
+
+    it('surfaces errors via the observable error channel', async () => {
+      const promise = firstValueFrom(service.create(payload));
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+    });
   });
 
   describe('toRow mapper', () => {

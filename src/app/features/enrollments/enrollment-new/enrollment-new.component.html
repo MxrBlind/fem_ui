@@ -1,0 +1,102 @@
+<h2 mat-dialog-title>Nueva Inscripción</h2>
+
+<mat-dialog-content class="enrollment-new__content">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando datos del formulario" />
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="enrollment-new__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Estudiante</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [matAutocomplete]="studentAuto"
+        [value]="displayStudentById(form.controls.studentId.value)"
+        (input)="onStudentInput(($any($event.target)).value)"
+        [disabled]="loading() || loadFailed()"
+      />
+      <mat-autocomplete
+        #studentAuto="matAutocomplete"
+        [displayWith]="displayStudent"
+        (optionSelected)="onStudentSelected($event.option.value)"
+      >
+        @for (student of filteredStudents(); track student.id) {
+          <mat-option [value]="student">{{ displayStudent(student) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (form.controls.studentId.touched && form.controls.studentId.hasError('required')) {
+        <mat-error>Selecciona un estudiante.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Curso</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [matAutocomplete]="courseAuto"
+        [value]="displayCourseById(form.controls.courseId.value)"
+        (input)="onCourseInput(($any($event.target)).value)"
+        [disabled]="loading() || loadFailed()"
+      />
+      <mat-autocomplete
+        #courseAuto="matAutocomplete"
+        [displayWith]="displayCourse"
+        (optionSelected)="onCourseSelected($event.option.value)"
+      >
+        @for (course of filteredCourses(); track course.id) {
+          <mat-option [value]="course">{{ displayCourse(course) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (form.controls.courseId.touched && form.controls.courseId.hasError('required')) {
+        <mat-error>Selecciona un curso.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Porcentaje de beca</mat-label>
+      <input
+        matInput
+        type="number"
+        formControlName="scholarshipPercent"
+        min="0"
+        max="100"
+        step="1"
+      />
+      @if (form.controls.scholarshipPercent.hasError('required')) {
+        <mat-error>El porcentaje es requerido.</mat-error>
+      } @else if (form.controls.scholarshipPercent.hasError('min')) {
+        <mat-error>El porcentaje mínimo es 0.</mat-error>
+      } @else if (form.controls.scholarshipPercent.hasError('max')) {
+        <mat-error>El porcentaje máximo es 100.</mat-error>
+      } @else if (form.controls.scholarshipPercent.hasError('pattern')) {
+        <mat-error>El porcentaje debe ser un número entero.</mat-error>
+      }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || saving() || loadFailed()"
+  >
+    @if (saving()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="18"
+        class="enrollment-new__spinner"
+      />
+    }
+    Crear
+  </button>
+</mat-dialog-actions>

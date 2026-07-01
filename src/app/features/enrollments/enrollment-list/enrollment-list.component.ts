@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -27,8 +28,9 @@ import { forkJoin, finalize } from 'rxjs';
 import { HasRoleDirective } from '../../../core/auth/has-role.directive';
 import { CycleService } from '../../../core/services/cycle.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { EnrollmentNewComponent } from '../enrollment-new/enrollment-new.component';
 import { CycleDto } from '../models/cycle.model';
-import { EnrollmentRow } from '../models/enrollment.model';
+import { EnrollmentDto, EnrollmentRow } from '../models/enrollment.model';
 
 const LOAD_ERROR_MESSAGE = 'No se pudieron cargar las inscripciones. Intenta de nuevo más tarde.';
 
@@ -58,6 +60,7 @@ export class EnrollmentListComponent implements OnInit, AfterViewInit {
   private readonly cycleService = inject(CycleService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   readonly displayedColumns = ['id', 'fullName', 'church', 'subject', 'category', 'grade', 'actions'];
 
@@ -142,7 +145,36 @@ export class EnrollmentListComponent implements OnInit, AfterViewInit {
   }
 
   onCreate(): void {
-    console.debug('[enrollment-list] TODO create');
+    const ref = this.dialog.open<EnrollmentNewComponent, void, EnrollmentDto>(
+      EnrollmentNewComponent,
+      {
+        width: '480px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((dto) => {
+        if (!dto) return;
+        this.refreshRows();
+      });
+  }
+
+  private refreshRows(): void {
+    this.enrollmentService
+      .listAllAsRows()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (rows) => {
+          this.rows.set(rows);
+          this.dataSource.data = rows;
+        },
+        error: (err) => {
+          console.error('[enrollment-list] failed to refresh', err);
+        },
+      });
   }
 
   onEdit(row: EnrollmentRow): void {

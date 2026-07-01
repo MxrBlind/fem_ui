@@ -42,6 +42,13 @@ export interface EnrollmentDto {
   startDate?: string;
 }
 
+export interface CreateEnrollmentRequest {
+  student: { id: number };
+  course: { id: number };
+  scholarshipPercent: number;
+  active: true;
+}
+
 export interface EnrollmentRow {
   id: number;
   fullName: string;

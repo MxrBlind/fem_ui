@@ -44,4 +44,24 @@ describe('CycleService', () => {
       .flush('boom', { status: 500, statusText: 'Server Error' });
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
+
+  it('shares a single request across multiple subscribers within the session', async () => {
+    const cycle: CycleDto = {
+      id: 1,
+      description: '2026-I',
+      startDate: '',
+      endDate: '',
+      current: true,
+      active: true,
+    };
+    const first = firstValueFrom(service.getCurrent());
+    const second = firstValueFrom(service.getCurrent());
+    const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle/current`);
+    req.flush(cycle);
+    await expect(first).resolves.toEqual(cycle);
+    await expect(second).resolves.toEqual(cycle);
+    const third = firstValueFrom(service.getCurrent());
+    http.expectNone(`${environment.apiBaseUrl}/api/cycle/current`);
+    await expect(third).resolves.toEqual(cycle);
+  });
 });
