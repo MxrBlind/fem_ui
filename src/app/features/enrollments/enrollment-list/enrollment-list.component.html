@@ -1,0 +1,131 @@
+<section class="enrollment-list">
+  <header class="enrollment-list__header">
+    <h2 class="enrollment-list__title mat-headline-small">{{ title() }}</h2>
+
+    <button
+      *hasRole="['admin']"
+      mat-flat-button
+      color="primary"
+      type="button"
+      disabled
+      matTooltip="Próximamente"
+      (click)="onCreate()"
+    >
+      <mat-icon>add</mat-icon>
+      Nueva inscripción
+    </button>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando inscripciones" />
+  }
+
+  <mat-card class="enrollment-list__card">
+    <mat-form-field appearance="outline" class="enrollment-list__filter">
+      <mat-label>Buscar</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [value]="filterText()"
+        (input)="onFilterInput(($any($event.target)).value)"
+      />
+      @if (filterText().length > 0) {
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          aria-label="Limpiar filtro"
+          (click)="clearFilter()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    @if (!loading() && rows().length === 0) {
+      <div class="enrollment-list__empty">
+        <mat-icon>inbox</mat-icon>
+        <p class="mat-body-large">No hay inscripciones para el ciclo actual.</p>
+      </div>
+    } @else {
+      <div class="enrollment-list__table-wrapper">
+        <table
+          mat-table
+          matSort
+          [dataSource]="dataSource"
+          class="enrollment-list__table"
+        >
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+            <td mat-cell *matCellDef="let row">{{ row.id }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="fullName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
+            <td mat-cell *matCellDef="let row">{{ row.fullName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="church">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Iglesia</th>
+            <td mat-cell *matCellDef="let row">{{ row.church || '—' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="subject">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Materia</th>
+            <td mat-cell *matCellDef="let row">{{ row.subject }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoría</th>
+            <td mat-cell *matCellDef="let row">{{ row.category }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="grade">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Calificación</th>
+            <td mat-cell *matCellDef="let row">{{ row.grade }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Acciones</th>
+            <td mat-cell *matCellDef="let row" class="enrollment-list__row-actions">
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Editar"
+                [attr.aria-label]="'Editar inscripción ' + row.id"
+                disabled
+                (click)="onEdit(row)"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                *hasRole="['admin']"
+                mat-icon-button
+                color="warn"
+                type="button"
+                matTooltip="Eliminar"
+                [attr.aria-label]="'Eliminar inscripción ' + row.id"
+                disabled
+                (click)="onDelete(row)"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+
+        <mat-paginator
+          [pageSizeOptions]="[10, 25, 50]"
+          [pageSize]="10"
+          showFirstLastButtons
+          aria-label="Paginación de inscripciones"
+        />
+      </div>
+    }
+  </mat-card>
+</section>
