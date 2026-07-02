@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
-import { RouterModule, RouterOutlet } from '@angular/router';
+import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -32,6 +32,7 @@ import { AuthService } from '@core/services/auth.service';
 })
 export class ShellComponent {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly user = this.auth.currentUser;
   readonly sidenavOpen = signal(true);
@@ -42,5 +43,10 @@ export class ShellComponent {
 
   onProfileAction(action: string): void {
     console.warn(`Not implemented yet: ${action}`);
+  }
+
+  logout(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
   }
 }
