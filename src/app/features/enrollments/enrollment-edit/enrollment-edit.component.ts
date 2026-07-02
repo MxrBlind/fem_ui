@@ -124,6 +124,18 @@ export class EnrollmentEditComponent implements OnInit {
         ],
       }
     ),
+    grade: new FormControl<number>(
+      this.data.enrollment.grade ?? 0,
+      {
+        nonNullable: true,
+        validators: [
+          Validators.required,
+          Validators.min(0),
+          Validators.max(100),
+          Validators.pattern(/^\d+$/),
+        ],
+      }
+    ),
   });
 
   ngOnInit(): void {
@@ -169,6 +181,7 @@ export class EnrollmentEditComponent implements OnInit {
           this.form.controls.studentId.disable({ emitEvent: false });
           this.form.controls.courseId.disable({ emitEvent: false });
           this.form.controls.scholarshipPercent.enable({ emitEvent: false });
+          this.form.controls.grade.enable({ emitEvent: false });
         } else {
           this.form.enable({ emitEvent: false });
         }
@@ -256,6 +269,7 @@ export class EnrollmentEditComponent implements OnInit {
         id: raw.courseId!,
       } as CourseDto,
       scholarshipPercent: raw.scholarshipPercent,
+      grade: raw.grade,
     };
 
     this.saving.set(true);

@@ -57,6 +57,27 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
+      <mat-label>Calificación</mat-label>
+      <input
+        matInput
+        type="number"
+        formControlName="grade"
+        min="0"
+        max="100"
+        step="1"
+      />
+      @if (form.controls.grade.hasError('required')) {
+        <mat-error>La calificación es requerida.</mat-error>
+      } @else if (form.controls.grade.hasError('min')) {
+        <mat-error>La calificación mínima es 0.</mat-error>
+      } @else if (form.controls.grade.hasError('max')) {
+        <mat-error>La calificación máxima es 100.</mat-error>
+      } @else if (form.controls.grade.hasError('pattern')) {
+        <mat-error>La calificación debe ser un número entero.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
       <mat-label>Porcentaje de beca</mat-label>
       <input
         matInput

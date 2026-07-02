@@ -141,13 +141,26 @@ describe('EnrollmentEditComponent', () => {
   });
 
   describe('prefill', () => {
-    it('prefills studentId, courseId, scholarshipPercent from injected enrollment', () => {
+    it('prefills studentId, courseId, scholarshipPercent, grade from injected enrollment', () => {
       const { fixture, http } = setup(admin);
       flushLoad(http, fixture);
       const form = fixture.componentInstance.form;
       expect(form.getRawValue().studentId).toBe(42);
       expect(form.getRawValue().courseId).toBe(7);
       expect(form.getRawValue().scholarshipPercent).toBe(25);
+      expect(form.getRawValue().grade).toBe(15);
+    });
+
+    it('defaults grade to 0 when enrollment.grade is undefined', () => {
+      const { fixture, http } = setup(admin, { ...baseEnrollment, grade: undefined });
+      flushLoad(http, fixture);
+      expect(fixture.componentInstance.form.getRawValue().grade).toBe(0);
+    });
+
+    it('prefills grade with 87 when enrollment.grade is 87', () => {
+      const { fixture, http } = setup(admin, { ...baseEnrollment, grade: 87 });
+      flushLoad(http, fixture);
+      expect(fixture.componentInstance.form.getRawValue().grade).toBe(87);
     });
   });
 
@@ -254,6 +267,52 @@ describe('EnrollmentEditComponent', () => {
     });
   });
 
+  describe('grade validators', () => {
+    let fixture: ComponentFixture<EnrollmentEditComponent>;
+    let http: HttpTestingController;
+
+    beforeEach(() => {
+      const harness = setup(admin);
+      fixture = harness.fixture;
+      http = harness.http;
+      flushLoad(http, fixture);
+    });
+
+    it('invalid for -1 (min)', () => {
+      fixture.componentInstance.form.controls.grade.setValue(-1);
+      expect(fixture.componentInstance.form.controls.grade.hasError('min')).toBe(true);
+    });
+
+    it('invalid for 101 (max)', () => {
+      fixture.componentInstance.form.controls.grade.setValue(101);
+      expect(fixture.componentInstance.form.controls.grade.hasError('max')).toBe(true);
+    });
+
+    it('invalid for 1.5 (pattern)', () => {
+      fixture.componentInstance.form.controls.grade.setValue(1.5);
+      expect(fixture.componentInstance.form.controls.grade.hasError('pattern')).toBe(true);
+    });
+
+    it('invalid for null (required)', () => {
+      fixture.componentInstance.form.controls.grade.setValue(null as unknown as number);
+      expect(fixture.componentInstance.form.controls.grade.hasError('required')).toBe(true);
+    });
+
+    it('valid for 0, 50, 100', () => {
+      for (const v of [0, 50, 100]) {
+        fixture.componentInstance.form.controls.grade.setValue(v);
+        expect(fixture.componentInstance.form.controls.grade.valid).toBe(true);
+      }
+    });
+
+    it('Actualizar button disabled while grade invalid', () => {
+      fixture.componentInstance.form.controls.grade.setValue(200);
+      fixture.detectChanges();
+      const btn = fixture.debugElement.query(By.css('button[color="primary"]'));
+      expect(btn.nativeElement.disabled).toBe(true);
+    });
+  });
+
   describe('role gating', () => {
     it('teacher: studentId and courseId controls are disabled after load', () => {
       const { fixture, http } = setup(teacher);
@@ -261,6 +320,7 @@ describe('EnrollmentEditComponent', () => {
       expect(fixture.componentInstance.form.controls.studentId.disabled).toBe(true);
       expect(fixture.componentInstance.form.controls.courseId.disabled).toBe(true);
       expect(fixture.componentInstance.form.controls.scholarshipPercent.disabled).toBe(false);
+      expect(fixture.componentInstance.form.controls.grade.disabled).toBe(false);
     });
 
     it('admin: all controls are enabled after load', () => {
@@ -269,6 +329,7 @@ describe('EnrollmentEditComponent', () => {
       expect(fixture.componentInstance.form.controls.studentId.disabled).toBe(false);
       expect(fixture.componentInstance.form.controls.courseId.disabled).toBe(false);
       expect(fixture.componentInstance.form.controls.scholarshipPercent.disabled).toBe(false);
+      expect(fixture.componentInstance.form.controls.grade.disabled).toBe(false);
     });
 
     it('teacher: inputs have readonly attribute', () => {
@@ -286,6 +347,7 @@ describe('EnrollmentEditComponent', () => {
       flushLoad(http, fixture);
 
       fixture.componentInstance.form.controls.scholarshipPercent.setValue(20);
+      fixture.componentInstance.form.controls.grade.setValue(80);
       fixture.componentInstance.onSubmit();
       fixture.detectChanges();
 
@@ -293,7 +355,7 @@ describe('EnrollmentEditComponent', () => {
       expect(req.request.method).toBe('PUT');
       expect(req.request.body.id).toBe(9);
       expect(req.request.body.active).toBe(true);
-      expect(req.request.body.grade).toBe(15);
+      expect(req.request.body.grade).toBe(80);
       expect(req.request.body.startDate).toBe('2026-02-01T00:00:00Z');
       expect(req.request.body.scholarshipPercent).toBe(20);
       req.flush(baseEnrollment);
