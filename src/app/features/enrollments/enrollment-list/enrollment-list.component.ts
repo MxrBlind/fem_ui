@@ -23,12 +23,15 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { forkJoin, finalize } from 'rxjs';
+import { switchMap, filter } from 'rxjs/operators';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { HasRoleDirective } from '../../../core/auth/has-role.directive';
 import { CycleService } from '../../../core/services/cycle.service';
 import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { EnrollmentEditComponent, SUCCESS_MESSAGE } from '../enrollment-edit/enrollment-edit.component';
 import { CycleDto } from '../models/cycle.model';
-import { EnrollmentRow } from '../models/enrollment.model';
+import { EnrollmentDto, EnrollmentRow } from '../models/enrollment.model';
 
 const LOAD_ERROR_MESSAGE = 'No se pudieron cargar las inscripciones. Intenta de nuevo más tarde.';
 
@@ -48,6 +51,7 @@ const LOAD_ERROR_MESSAGE = 'No se pudieron cargar las inscripciones. Intenta de 
     MatSortModule,
     MatTableModule,
     MatTooltipModule,
+    MatDialogModule,
     HasRoleDirective,
   ],
   templateUrl: './enrollment-list.component.html',
@@ -58,6 +62,7 @@ export class EnrollmentListComponent implements OnInit, AfterViewInit {
   private readonly cycleService = inject(CycleService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   readonly displayedColumns = ['id', 'fullName', 'church', 'subject', 'category', 'grade', 'actions'];
 
@@ -146,7 +151,25 @@ export class EnrollmentListComponent implements OnInit, AfterViewInit {
   }
 
   onEdit(row: EnrollmentRow): void {
-    console.debug('[enrollment-list] TODO edit', row.id);
+    const ref = this.dialog.open(EnrollmentEditComponent, {
+      width: '480px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: { enrollment: row.raw },
+    });
+
+    ref
+      .afterClosed()
+      .pipe(
+        filter((dto): dto is EnrollmentDto => !!dto),
+        switchMap(() => this.enrollmentService.listAllAsRows()),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((rows) => {
+        this.dataSource.data = rows;
+        this.rows.set(rows);
+        this.snackBar.open(SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
+      });
   }
 
   onDelete(row: EnrollmentRow): void {

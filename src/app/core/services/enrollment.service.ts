@@ -21,6 +21,10 @@ export class EnrollmentService {
   listAllAsRows(): Observable<EnrollmentRow[]> {
     return this.listAll().pipe(map((dtos) => dtos.map(toRow)));
   }
+
+  update(id: number, payload: EnrollmentDto): Observable<EnrollmentDto> {
+    return this.http.put<EnrollmentDto>(`${this.baseUrl}/${id}`, payload);
+  }
 }
 
 export function toRow(dto: EnrollmentDto): EnrollmentRow {
