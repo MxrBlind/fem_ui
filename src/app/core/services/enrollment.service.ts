@@ -5,6 +5,7 @@ import { map } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import {
+  CreateEnrollmentRequest,
   EnrollmentDto,
   EnrollmentRow,
 } from '../../features/enrollments/models/enrollment.model';

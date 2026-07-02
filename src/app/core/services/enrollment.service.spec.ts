@@ -4,7 +4,10 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { EnrollmentDto } from '../../features/enrollments/models/enrollment.model';
+import {
+  CreateEnrollmentRequest,
+  EnrollmentDto,
+} from '../../features/enrollments/models/enrollment.model';
 import { EnrollmentService, toRow } from './enrollment.service';
 
 function buildDto(overrides: Partial<EnrollmentDto> = {}): EnrollmentDto {
@@ -67,34 +70,28 @@ describe('EnrollmentService', () => {
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
 
-  describe('update()', () => {
-    it('issues PUT /api/enrollment/{id} with the full payload', async () => {
-      const dto = buildDto();
-      const promise = firstValueFrom(service.update(dto.id!, dto));
-      const req = http.expectOne(`${environment.apiBaseUrl}/api/enrollment/${dto.id}`);
-      expect(req.request.method).toBe('PUT');
-      expect(req.request.body).toEqual(dto);
-      req.flush(dto);
-      await expect(promise).resolves.toEqual(dto);
+  describe('create()', () => {
+    const payload: CreateEnrollmentRequest = {
+      student: { id: 42 },
+      course: { id: 7 },
+      scholarshipPercent: 25,
+      active: true,
+    };
+
+    it('issues POST /api/enrollment with the payload and returns the created DTO', async () => {
+      const created = buildDto({ id: 99, scholarshipPercent: 25 });
+      const promise = firstValueFrom(service.create(payload));
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/enrollment`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(payload);
+      req.flush(created);
+      await expect(promise).resolves.toEqual(created);
     });
 
-    it('preserves id, active, grade, startDate in the request body', async () => {
-      const dto = buildDto({ id: 9, active: true, grade: 15, startDate: '2026-02-01T00:00:00Z' });
-      const promise = firstValueFrom(service.update(9, dto));
-      const req = http.expectOne(`${environment.apiBaseUrl}/api/enrollment/9`);
-      expect(req.request.body.id).toBe(9);
-      expect(req.request.body.active).toBe(true);
-      expect(req.request.body.grade).toBe(15);
-      expect(req.request.body.startDate).toBe('2026-02-01T00:00:00Z');
-      req.flush(dto);
-      await promise;
-    });
-
-    it('propagates HTTP errors via the error channel', async () => {
-      const dto = buildDto();
-      const promise = firstValueFrom(service.update(dto.id!, dto));
+    it('surfaces errors via the observable error channel', async () => {
+      const promise = firstValueFrom(service.create(payload));
       http
-        .expectOne(`${environment.apiBaseUrl}/api/enrollment/${dto.id}`)
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment`)
         .flush('boom', { status: 500, statusText: 'Server Error' });
       await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
     });

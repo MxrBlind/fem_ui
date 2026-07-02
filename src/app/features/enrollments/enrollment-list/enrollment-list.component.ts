@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -147,7 +148,36 @@ export class EnrollmentListComponent implements OnInit, AfterViewInit {
   }
 
   onCreate(): void {
-    console.debug('[enrollment-list] TODO create');
+    const ref = this.dialog.open<EnrollmentNewComponent, void, EnrollmentDto>(
+      EnrollmentNewComponent,
+      {
+        width: '480px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((dto) => {
+        if (!dto) return;
+        this.refreshRows();
+      });
+  }
+
+  private refreshRows(): void {
+    this.enrollmentService
+      .listAllAsRows()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (rows) => {
+          this.rows.set(rows);
+          this.dataSource.data = rows;
+        },
+        error: (err) => {
+          console.error('[enrollment-list] failed to refresh', err);
+        },
+      });
   }
 
   onEdit(row: EnrollmentRow): void {
