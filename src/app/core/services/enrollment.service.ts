@@ -5,6 +5,7 @@ import { map } from 'rxjs/operators';
 
 import { environment } from '../../../environments/environment';
 import {
+  CreateEnrollmentRequest,
   EnrollmentDto,
   EnrollmentRow,
 } from '../../features/enrollments/models/enrollment.model';
@@ -20,6 +21,10 @@ export class EnrollmentService {
 
   listAllAsRows(): Observable<EnrollmentRow[]> {
     return this.listAll().pipe(map((dtos) => dtos.map(toRow)));
+  }
+
+  create(payload: CreateEnrollmentRequest): Observable<EnrollmentDto> {
+    return this.http.post<EnrollmentDto>(this.baseUrl, payload);
   }
 }
 
