@@ -4,15 +4,16 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { signal } from '@angular/core';
-import { of } from 'rxjs';
-import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
+import { Subject, of } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/services/auth.service';
 import { AuthUser } from '../../../core/auth/rbac';
 import { EnrollmentDto } from '../models/enrollment.model';
+import { EnrollmentEditComponent } from '../enrollment-edit/enrollment-edit.component';
 import { EnrollmentListComponent } from './enrollment-list.component';
 
 const admin: AuthUser = { id: 1, username: 'admin', role: 'admin', rawRole: 'admin' };
@@ -249,64 +250,81 @@ describe('EnrollmentListComponent', () => {
       expect(text(fixture)).toContain('Nueva inscripción');
     });
 
-    it('edit and delete handlers remain no-op stubs that only console.debug', () => {
+    it('onCreate is a no-op stub that logs via console.debug', () => {
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const { fixture } = setup(admin);
+      fixture.componentInstance.onCreate();
+      expect(debugSpy).toHaveBeenCalledTimes(1);
+      debugSpy.mockRestore();
+    });
+
+    it('onDelete is a no-op stub that logs via console.debug', () => {
       const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
       const { fixture, http } = setup(admin);
-      fixture.componentInstance.onEdit({ id: 5 } as any);
       fixture.componentInstance.onDelete({ id: 6 } as any);
-      expect(debugSpy).toHaveBeenCalledTimes(2);
+      expect(debugSpy).toHaveBeenCalledTimes(1);
       http.expectNone(`${environment.apiBaseUrl}/api/enrollment`);
       debugSpy.mockRestore();
     });
 
-    it('onCreate opens the new-enrollment modal via MatDialog', () => {
-      const { fixture, http } = setup(admin);
-      const dialog = TestBed.inject(MatDialog);
-      const openSpy = vi.spyOn(dialog, 'open').mockReturnValue({
-        afterClosed: () => of(undefined),
-      } as unknown as MatDialogRef<unknown>);
+    it('onEdit opens EnrollmentEditComponent with correct config and data', () => {
+      const afterClosed$ = new Subject<EnrollmentDto | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const { fixture } = setup(admin);
 
-      fixture.componentInstance.onCreate();
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onEdit(row);
 
-      expect(openSpy).toHaveBeenCalledTimes(1);
-      const [, config] = openSpy.mock.calls[0];
-      expect(config).toMatchObject({
-        width: '480px',
-        autoFocus: 'first-tabbable',
-        restoreFocus: true,
-      });
-      http.expectNone(`${environment.apiBaseUrl}/api/enrollment`);
+      expect(openSpy).toHaveBeenCalledWith(
+        EnrollmentEditComponent,
+        expect.objectContaining({
+          width: '480px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+          data: { enrollment: row.raw },
+        })
+      );
+      afterClosed$.complete();
+      openSpy.mockRestore();
     });
 
-    it('on afterClosed emitting an EnrollmentDto, refreshes the list', () => {
+    it('on afterClosed() emitting a truthy DTO, re-fetches enrollment list and replaces dataSource.data', () => {
+      const afterClosed$ = new Subject<EnrollmentDto | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
       const { fixture, http } = setup(admin);
-      const dialog = TestBed.inject(MatDialog);
-      vi.spyOn(dialog, 'open').mockReturnValue({
-        afterClosed: () => of(makeDto(99)),
-      } as unknown as MatDialogRef<unknown>);
 
-      const before = fixture.componentInstance.dataSource.data;
-      fixture.componentInstance.onCreate();
-      http.expectOne(`${environment.apiBaseUrl}/api/enrollment`).flush([makeDto(42)]);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onEdit(row);
+
+      const updatedDto = makeDto(99);
+      afterClosed$.next(updatedDto);
+      afterClosed$.complete();
+
+      http.expectOne(`${environment.apiBaseUrl}/api/enrollment`).flush([updatedDto]);
       fixture.detectChanges();
 
-      expect(fixture.componentInstance.rows().length).toBe(1);
-      expect(fixture.componentInstance.rows()[0].id).toBe(42);
-      expect(fixture.componentInstance.dataSource.data).not.toBe(before);
+      expect(fixture.componentInstance.dataSource.data.some((r) => r.id === 99)).toBe(true);
+      openSpy.mockRestore();
     });
 
-    it('on afterClosed emitting undefined, does not refresh the list', () => {
+    it('on afterClosed() emitting undefined, does not re-fetch and dataSource.data is unchanged', () => {
+      const afterClosed$ = new Subject<EnrollmentDto | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
       const { fixture, http } = setup(admin);
-      const dialog = TestBed.inject(MatDialog);
-      vi.spyOn(dialog, 'open').mockReturnValue({
-        afterClosed: () => of(undefined),
-      } as unknown as MatDialogRef<unknown>);
 
-      const before = fixture.componentInstance.dataSource.data;
-      fixture.componentInstance.onCreate();
+      const row = fixture.componentInstance.dataSource.data[0];
+      const originalData = fixture.componentInstance.dataSource.data;
+      fixture.componentInstance.onEdit(row);
+
+      afterClosed$.next(undefined);
+      afterClosed$.complete();
 
       http.expectNone(`${environment.apiBaseUrl}/api/enrollment`);
-      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(fixture.componentInstance.dataSource.data).toBe(originalData);
+      openSpy.mockRestore();
     });
   });
 

@@ -1,0 +1,23 @@
+.enrollment-edit {
+  &__content {
+    display: flex;
+    flex-direction: column;
+    min-width: 400px;
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+
+    mat-form-field {
+      width: 100%;
+    }
+  }
+
+  &__spinner {
+    display: inline-flex;
+    margin-right: 8px;
+  }
+}
