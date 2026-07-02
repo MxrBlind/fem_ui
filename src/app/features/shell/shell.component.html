@@ -22,7 +22,7 @@
 
   <mat-menu #profileMenu="matMenu">
     <button mat-menu-item (click)="onProfileAction('perfil')">Mi perfil</button>
-    <button mat-menu-item (click)="onProfileAction('salir')">Salir</button>
+    <button mat-menu-item aria-label="Cerrar sesión" (click)="logout()">Salir</button>
   </mat-menu>
 </mat-toolbar>
 

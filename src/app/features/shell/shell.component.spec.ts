@@ -1,6 +1,7 @@
+import { vi } from 'vitest';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 import { AuthService } from '../../core/services/auth.service';
@@ -13,7 +14,11 @@ const student: AuthUser = { id: 3, username: 'student_user', role: 'student', ra
 
 function setup(user: AuthUser | null) {
   const currentUser = signal<AuthUser | null>(user);
-  const fakeAuth = { currentUser: currentUser.asReadonly() } as unknown as AuthService;
+  const logoutSpy = vi.fn();
+  const fakeAuth = {
+    currentUser: currentUser.asReadonly(),
+    logout: logoutSpy,
+  } as unknown as AuthService;
 
   TestBed.configureTestingModule({
     imports: [ShellComponent],
@@ -26,6 +31,9 @@ function setup(user: AuthUser | null) {
 
   const fixture: ComponentFixture<ShellComponent> = TestBed.createComponent(ShellComponent);
   fixture.detectChanges();
+  (fixture as ComponentFixture<ShellComponent> & {
+    logoutSpy: ReturnType<typeof vi.fn>;
+  }).logoutSpy = logoutSpy;
   return fixture;
 }
 
@@ -172,5 +180,94 @@ describe('ShellComponent', () => {
     const content = q(fixture, 'mat-sidenav-content');
     expect(content).toBeTruthy();
     expect(content!.querySelector('router-outlet')).toBeTruthy();
+  });
+
+  describe('Logout flow (FEM-15)', () => {
+    function openProfileMenu(fixture: ComponentFixture<ShellComponent>): void {
+      const trigger = Array.from(qAll(fixture, 'button')).find(
+        (el) => el.getAttribute('aria-label') === 'User profile menu',
+      );
+      trigger!.click();
+      fixture.detectChanges();
+    }
+
+    function findMenuItem(text: string): HTMLElement | undefined {
+      return Array.from(
+        document.querySelectorAll<HTMLElement>('button.mat-mdc-menu-item'),
+      ).find((el) => (el.textContent ?? '').includes(text));
+    }
+
+    afterEach(() => {
+      document
+        .querySelectorAll('.cdk-overlay-container')
+        .forEach((el) => el.remove());
+    });
+
+    it('3.2 clicking Salir calls AuthService.logout exactly once', () => {
+      const fixture = setup(admin);
+      const spy = (fixture as ComponentFixture<ShellComponent> & {
+        logoutSpy: ReturnType<typeof vi.fn>;
+      }).logoutSpy;
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      openProfileMenu(fixture);
+      findMenuItem('Salir')!.click();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('3.3 after clicking Salir, Router.navigate is called with ["/login"]', () => {
+      const fixture = setup(admin);
+      const router = TestBed.inject(Router);
+      const navSpy = vi
+        .spyOn(router, 'navigate')
+        .mockResolvedValue(true);
+
+      openProfileMenu(fixture);
+      findMenuItem('Salir')!.click();
+
+      expect(navSpy).toHaveBeenCalledWith(['/login']);
+    });
+
+    it('3.4 activating Salir via keyboard triggers the same handler', () => {
+      const fixture = setup(admin);
+      const spy = (fixture as ComponentFixture<ShellComponent> & {
+        logoutSpy: ReturnType<typeof vi.fn>;
+      }).logoutSpy;
+      const router = TestBed.inject(Router);
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      fixture.componentInstance.logout();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('3.5 Salir button exposes aria-label="Cerrar sesión" in the DOM', () => {
+      const fixture = setup(admin);
+
+      openProfileMenu(fixture);
+      const salir = findMenuItem('Salir');
+
+      expect(salir).toBeTruthy();
+      expect(salir!.getAttribute('aria-label')).toBe('Cerrar sesión');
+    });
+
+    it('3.6 Mi perfil click still routes through onProfileAction("perfil") and does not navigate', () => {
+      const fixture = setup(admin);
+      const router = TestBed.inject(Router);
+      const navSpy = vi
+        .spyOn(router, 'navigate')
+        .mockResolvedValue(true);
+      const onProfileActionSpy = vi.spyOn(
+        fixture.componentInstance,
+        'onProfileAction',
+      );
+
+      openProfileMenu(fixture);
+      findMenuItem('Mi perfil')!.click();
+
+      expect(onProfileActionSpy).toHaveBeenCalledWith('perfil');
+      expect(navSpy).not.toHaveBeenCalled();
+    });
   });
 });
