@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, shareReplay } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
-import { CycleDto } from '../../features/enrollments/models/cycle.model';
+import { environment } from '@env/environment';
+import { CycleDto } from '@features/enrollments/models/cycle.model';
 
 @Injectable({ providedIn: 'root' })
 export class CycleService {

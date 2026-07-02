@@ -13,7 +13,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -27,12 +26,13 @@ import { forkJoin, finalize } from 'rxjs';
 import { switchMap, filter } from 'rxjs/operators';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
-import { HasRoleDirective } from '../../../core/auth/has-role.directive';
-import { CycleService } from '../../../core/services/cycle.service';
-import { EnrollmentService } from '../../../core/services/enrollment.service';
+import { HasRoleDirective } from '@core/auth/has-role.directive';
+import { CycleService } from '@core/services/cycle.service';
+import { EnrollmentService } from '@core/services/enrollment.service';
 import { EnrollmentEditComponent, SUCCESS_MESSAGE } from '../enrollment-edit/enrollment-edit.component';
 import { CycleDto } from '../models/cycle.model';
 import { EnrollmentDto, EnrollmentRow } from '../models/enrollment.model';
+import {EnrollmentNewComponent} from '@features/enrollments/enrollment-new/enrollment-new.component';
 
 const LOAD_ERROR_MESSAGE = 'No se pudieron cargar las inscripciones. Intenta de nuevo más tarde.';
 

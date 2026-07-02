@@ -1,4 +1,4 @@
-import { UserDto } from '../../../core/models/auth.model';
+import { UserDto } from '@core/models/auth.model';
 import { CycleDto } from './cycle.model';
 
 export interface CategoryDto {

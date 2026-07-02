@@ -10,8 +10,8 @@ import { By } from '@angular/platform-browser';
 import { Subject, of } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { AuthService } from '../../../core/services/auth.service';
-import { AuthUser } from '../../../core/auth/rbac';
+import { AuthService } from '@core/services/auth.service';
+import { AuthUser } from '@core/auth/rbac';
 import { EnrollmentDto } from '../models/enrollment.model';
 import { EnrollmentEditComponent } from '../enrollment-edit/enrollment-edit.component';
 import { EnrollmentListComponent } from './enrollment-list.component';

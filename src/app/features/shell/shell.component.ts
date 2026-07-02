@@ -8,8 +8,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
-import { HasRoleDirective } from '../../core/auth/has-role.directive';
-import { AuthService } from '../../core/services/auth.service';
+import { HasRoleDirective } from '@core/auth/has-role.directive';
+import { AuthService } from '@core/services/auth.service';
 
 @Component({
   selector: 'app-shell',

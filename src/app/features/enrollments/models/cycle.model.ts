@@ -1,4 +1,4 @@
-import { UserDto } from '../../../core/models/auth.model';
+import { UserDto } from '@core/models/auth.model';
 
 export interface CycleDto {
   id?: number;

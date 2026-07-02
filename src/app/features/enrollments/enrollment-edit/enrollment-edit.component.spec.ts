@@ -12,8 +12,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 
 import { environment } from '../../../../environments/environment';
-import { AuthService } from '../../../core/services/auth.service';
-import { AuthUser } from '../../../core/auth/rbac';
+import { AuthService } from '@core/services/auth.service';
+import { AuthUser } from '@core/auth/rbac';
 import { EnrollmentDto } from '../models/enrollment.model';
 import {
   EnrollmentEditComponent,

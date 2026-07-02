@@ -10,7 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { finalize } from 'rxjs/operators';
 
-import { AuthService } from '../../../core/services/auth.service';
+import { AuthService } from '@core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -65,8 +65,6 @@ export class LoginComponent {
       .pipe(finalize(() => this.submitting.set(false)))
       .subscribe({
         next: () => {
-          // AuthService.login() handles token storage, profile fetch, and
-          // role-home navigation.
           this.snackBar.open('Sesión iniciada', undefined, { duration: 2000 });
         },
         error: (err: HttpErrorResponse) => {

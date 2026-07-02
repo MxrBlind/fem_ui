@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { roleGuard } from '../../core/auth/auth.guards';
+import { roleGuard } from '@core/auth/auth.guards';
 
 export const SHELL_ROUTES: Routes = [
   {

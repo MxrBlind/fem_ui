@@ -25,11 +25,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { forkJoin, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 
-import { UserDto } from '../../../core/models/auth.model';
-import { CourseService } from '../../../core/services/course.service';
-import { CycleService } from '../../../core/services/cycle.service';
-import { EnrollmentService } from '../../../core/services/enrollment.service';
-import { UserService } from '../../../core/services/user.service';
+import { UserDto } from '@core/models/auth.model';
+import { CourseService } from '@core/services/course.service';
+import { CycleService } from '@core/services/cycle.service';
+import { EnrollmentService } from '@core/services/enrollment.service';
+import { UserService } from '@core/services/user.service';
 import { CycleDto } from '../models/cycle.model';
 import {
   CourseDto,

@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
-import { CourseDto } from '../../features/enrollments/models/enrollment.model';
+import { environment } from '@env/environment';
+import { CourseDto } from '@features/enrollments/models/enrollment.model';
 
 @Injectable({ providedIn: 'root' })
 export class CourseService {

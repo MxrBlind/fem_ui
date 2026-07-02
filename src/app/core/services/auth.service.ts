@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, defer, firstValueFrom, of, throwError } from 'rxjs';
 import { catchError, switchMap, tap } from 'rxjs/operators';
 
-import { environment } from '../../../environments/environment';
+import { environment } from '@env/environment';
 import {
   AuthUser,
   FALLBACK_HOME_ROUTE,

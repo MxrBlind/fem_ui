@@ -29,17 +29,17 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize, switchMap } from 'rxjs/operators';
 
-import { UserDto } from '../../../core/models/auth.model';
-import { AuthService } from '../../../core/services/auth.service';
-import { CourseService } from '../../../core/services/course.service';
-import { CycleService } from '../../../core/services/cycle.service';
-import { EnrollmentService } from '../../../core/services/enrollment.service';
-import { UserService } from '../../../core/services/user.service';
+import { UserDto } from '@core/models/auth.model';
+import { AuthService } from '@core/services/auth.service';
+import { CourseService } from '@core/services/course.service';
+import { CycleService } from '@core/services/cycle.service';
+import { EnrollmentService } from '@core/services/enrollment.service';
+import { UserService } from '@core/services/user.service';
 import { CycleDto } from '../models/cycle.model';
 import { CourseDto, EnrollmentDto } from '../models/enrollment.model';
 
-export const SUCCESS_MESSAGE = 'Registro creado exitosamente';
-export const ERROR_MESSAGE = 'Error al crear este registro';
+export const SUCCESS_MESSAGE = 'Registro actualizado exitosamente';
+export const ERROR_MESSAGE = 'Error al actualizar este registro';
 export const LOAD_ERROR_MESSAGE = 'No se pudieron cargar los datos del formulario';
 
 interface LoadResult {

@@ -10,7 +10,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { environment } from '../../../../environments/environment';
-import { UserDto } from '../../../core/models/auth.model';
+import { UserDto } from '@core/models/auth.model';
 import { CycleDto } from '../models/cycle.model';
 import { CourseDto, EnrollmentDto } from '../models/enrollment.model';
 import {

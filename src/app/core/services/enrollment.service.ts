@@ -3,12 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import { environment } from '../../../environments/environment';
+import { environment } from '@env/environment';
 import {
   CreateEnrollmentRequest,
   EnrollmentDto,
   EnrollmentRow,
-} from '../../features/enrollments/models/enrollment.model';
+} from '@features/enrollments/models/enrollment.model';
 
 @Injectable({ providedIn: 'root' })
 export class EnrollmentService {
@@ -21,6 +21,10 @@ export class EnrollmentService {
 
   listAllAsRows(): Observable<EnrollmentRow[]> {
     return this.listAll().pipe(map((dtos) => dtos.map(toRow)));
+  }
+
+  create(payload: CreateEnrollmentRequest): Observable<EnrollmentDto> {
+    return this.http.post<EnrollmentDto>(this.baseUrl, payload);
   }
 
   update(id: number, payload: EnrollmentDto): Observable<EnrollmentDto> {
