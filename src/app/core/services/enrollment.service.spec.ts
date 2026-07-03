@@ -97,6 +97,25 @@ describe('EnrollmentService', () => {
     });
   });
 
+  describe('delete()', () => {
+    it('issues DELETE /api/enrollment/{id} with no request body and completes on 204', async () => {
+      const promise = firstValueFrom(service.delete(42), { defaultValue: undefined });
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/enrollment/42`);
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.body).toBeNull();
+      req.flush(null, { status: 204, statusText: 'No Content' });
+      await expect(promise).resolves.toBeNull();
+    });
+
+    it('surfaces errors via the observable error channel', async () => {
+      const promise = firstValueFrom(service.delete(42));
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment/42`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+    });
+  });
+
   describe('toRow mapper', () => {
     it('derives fullName from profile name + parentLastName + motherLastName', () => {
       expect(toRow(buildDto()).fullName).toBe('Ana Pérez Ruiz');

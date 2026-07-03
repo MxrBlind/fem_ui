@@ -103,8 +103,9 @@
                 color="warn"
                 type="button"
                 matTooltip="Eliminar"
+                data-testid="enrollment-delete-button"
                 [attr.aria-label]="'Eliminar inscripción ' + row.id"
-                disabled
+                [disabled]="deletingId() === row.id"
                 (click)="onDelete(row)"
               >
                 <mat-icon>delete</mat-icon>

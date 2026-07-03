@@ -14,7 +14,12 @@ import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { EnrollmentDto } from '../models/enrollment.model';
 import { EnrollmentEditComponent } from '../enrollment-edit/enrollment-edit.component';
-import { EnrollmentListComponent } from './enrollment-list.component';
+import { EnrollmentDeleteConfirmComponent } from '../enrollment-delete-confirm/enrollment-delete-confirm.component';
+import {
+  DELETE_ERROR_MESSAGE,
+  DELETE_SUCCESS_MESSAGE,
+  EnrollmentListComponent,
+} from './enrollment-list.component';
 
 const admin: AuthUser = { id: 1, username: 'admin', role: 'admin', rawRole: 'admin' };
 const teacher: AuthUser = { id: 2, username: 'teacher', role: 'teacher', rawRole: 'teacher' };
@@ -68,8 +73,9 @@ function setup(user: AuthUser, options: { skipFlush?: boolean } = {}): Harness {
     ],
   });
 
-  const snack = TestBed.inject(MatSnackBar);
-  const snackOpen = vi.spyOn(snack, 'open').mockReturnValue({} as never);
+  const snackOpen = vi
+    .spyOn(MatSnackBar.prototype, 'open')
+    .mockReturnValue({} as never);
 
   const fixture = TestBed.createComponent(EnrollmentListComponent);
   fixture.detectChanges(); // ngOnInit issues the requests
@@ -250,21 +256,113 @@ describe('EnrollmentListComponent', () => {
       expect(text(fixture)).toContain('Nueva inscripción');
     });
 
-    it('onCreate is a no-op stub that logs via console.debug', () => {
-      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    it('onCreate opens the new-enrollment dialog', () => {
+      const afterClosed$ = new Subject<EnrollmentDto | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
       const { fixture } = setup(admin);
       fixture.componentInstance.onCreate();
-      expect(debugSpy).toHaveBeenCalledTimes(1);
-      debugSpy.mockRestore();
+      expect(openSpy).toHaveBeenCalled();
+      afterClosed$.complete();
+      openSpy.mockRestore();
     });
 
-    it('onDelete is a no-op stub that logs via console.debug', () => {
-      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
-      const { fixture, http } = setup(admin);
-      fixture.componentInstance.onDelete({ id: 6 } as any);
-      expect(debugSpy).toHaveBeenCalledTimes(1);
+    it('onDelete opens EnrollmentDeleteConfirmComponent with correct config and data', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const { fixture } = setup(admin);
+
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onDelete(row);
+
+      expect(openSpy).toHaveBeenCalledWith(
+        EnrollmentDeleteConfirmComponent,
+        expect.objectContaining({
+          width: '420px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+          data: { row },
+        })
+      );
+      afterClosed$.complete();
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=true, issues DELETE, refreshes list, shows success snackbar', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const { fixture, http, snackOpen } = setup(admin);
+
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment/${row.id}`)
+        .flush(null, { status: 204, statusText: 'No Content' });
+      http.expectOne(`${environment.apiBaseUrl}/api/enrollment`).flush([makeDto(7)]);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.dataSource.data.some((r) => r.id === 7)).toBe(true);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_SUCCESS_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 3000 })
+      );
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=false, does not issue DELETE and shows no snackbar', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const { fixture, http, snackOpen } = setup(admin);
+      const originalCallCount = snackOpen.mock.calls.length;
+
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(false);
+      afterClosed$.complete();
+
+      http.expectNone(`${environment.apiBaseUrl}/api/enrollment/${row.id}`);
       http.expectNone(`${environment.apiBaseUrl}/api/enrollment`);
-      debugSpy.mockRestore();
+      expect(snackOpen.mock.calls.length).toBe(originalCallCount);
+      openSpy.mockRestore();
+    });
+
+    it('on DELETE error, keeps rows, shows error snackbar, logs error', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const { fixture, http, snackOpen } = setup(admin);
+
+      const row = fixture.componentInstance.dataSource.data[0];
+      const before = fixture.componentInstance.dataSource.data;
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment/${row.id}`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      http.expectNone(`${environment.apiBaseUrl}/api/enrollment`);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_ERROR_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 5000, panelClass: 'snackbar-error' })
+      );
+      expect(errorSpy).toHaveBeenCalledWith('[enrollment-list] failed to delete', expect.anything());
+      errorSpy.mockRestore();
+      openSpy.mockRestore();
     });
 
     it('onEdit opens EnrollmentEditComponent with correct config and data', () => {
