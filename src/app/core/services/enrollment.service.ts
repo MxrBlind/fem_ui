@@ -30,6 +30,10 @@ export class EnrollmentService {
   update(id: number, payload: EnrollmentDto): Observable<EnrollmentDto> {
     return this.http.put<EnrollmentDto>(`${this.baseUrl}/${id}`, payload);
   }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }
 
 export function toRow(dto: EnrollmentDto): EnrollmentRow {
