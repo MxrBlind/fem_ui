@@ -97,22 +97,22 @@ describe('ShellComponent', () => {
   });
 
   describe('"Ciclo actual" link', () => {
-    it('1.10a visible for admin and routes to /ciclo-actual', () => {
+    it('1.10a visible for admin and is inert (no enrollment-list destination)', () => {
       const fixture = setup(admin);
       expect(textVisible(fixture, 'Ciclo actual')).toBe(true);
       const link = Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
         (el.textContent ?? '').includes('Ciclo actual')
       );
-      expect(link?.getAttribute('href')).toBe('/ciclo-actual');
+      expect(link?.getAttribute('href')).not.toBe('/inscripciones');
     });
 
-    it('1.10b visible for teacher and routes to /ciclo-actual', () => {
+    it('1.10b visible for teacher and is inert (no enrollment-list destination)', () => {
       const fixture = setup(teacher);
       expect(textVisible(fixture, 'Ciclo actual')).toBe(true);
       const link = Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
         (el.textContent ?? '').includes('Ciclo actual')
       );
-      expect(link?.getAttribute('href')).toBe('/ciclo-actual');
+      expect(link?.getAttribute('href')).not.toBe('/inscripciones');
     });
 
     it('1.10c absent for student', () => {
@@ -122,14 +122,22 @@ describe('ShellComponent', () => {
   });
 
   describe('"Inscripciones" link', () => {
-    it('1.11a visible for admin', () => {
+    it('1.11a visible for admin and routes to /inscripciones', () => {
       const fixture = setup(admin);
       expect(textVisible(fixture, 'Inscripciones')).toBe(true);
+      const link = Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
+        (el.textContent ?? '').includes('Inscripciones')
+      );
+      expect(link?.getAttribute('href')).toBe('/inscripciones');
     });
 
-    it('1.11b visible for teacher', () => {
+    it('1.11b visible for teacher and routes to /inscripciones', () => {
       const fixture = setup(teacher);
       expect(textVisible(fixture, 'Inscripciones')).toBe(true);
+      const link = Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
+        (el.textContent ?? '').includes('Inscripciones')
+      );
+      expect(link?.getAttribute('href')).toBe('/inscripciones');
     });
 
     it('1.11c absent for student', () => {
