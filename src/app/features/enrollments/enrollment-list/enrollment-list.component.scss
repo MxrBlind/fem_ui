@@ -14,6 +14,7 @@
 
 .enrollment-list__title {
   margin: 0;
+  font-weight: 600;
 }
 
 .enrollment-list__card {
@@ -23,7 +24,6 @@
 
 .enrollment-list__filter {
   width: 100%;
-  max-width: 480px;
   margin-bottom: 8px;
 }
 
@@ -34,12 +34,6 @@
 
 .enrollment-list__table {
   width: 100%;
-}
-
-.enrollment-list__row-actions {
-  display: flex;
-  gap: 4px;
-  align-items: center;
 }
 
 .enrollment-list__empty {

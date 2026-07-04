@@ -8,13 +8,13 @@
   justify-content: center;
   min-height: 100vh;
   padding: 16px;
-  background: var(--mat-sys-surface);
+  background: var(--mat-sys-background);
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
-  padding: 24px;
+  padding: 32px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -34,8 +34,17 @@
 
 .login-card__actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column-reverse;
+  align-items: stretch;
+  gap: 12px;
   margin-top: 4px;
+
+  button[mat-flat-button] {
+    height: 44px;
+    font-weight: 500;
+  }
+
+  a[mat-button] {
+    align-self: center;
+  }
 }

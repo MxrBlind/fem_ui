@@ -87,29 +87,31 @@
 
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Acciones</th>
-            <td mat-cell *matCellDef="let row" class="enrollment-list__row-actions">
-              <button
-                mat-icon-button
-                type="button"
-                matTooltip="Editar"
-                [attr.aria-label]="'Editar inscripción ' + row.id"
-                (click)="onEdit(row)"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button
-                *hasRole="['admin']"
-                mat-icon-button
-                color="warn"
-                type="button"
-                matTooltip="Eliminar"
-                data-testid="enrollment-delete-button"
-                [attr.aria-label]="'Eliminar inscripción ' + row.id"
-                [disabled]="deletingId() === row.id"
-                (click)="onDelete(row)"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
+            <td mat-cell *matCellDef="let row">
+              <div class="row-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Editar"
+                  [attr.aria-label]="'Editar inscripción ' + row.id"
+                  (click)="onEdit(row)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  *hasRole="['admin']"
+                  mat-icon-button
+                  color="warn"
+                  type="button"
+                  matTooltip="Eliminar"
+                  data-testid="enrollment-delete-button"
+                  [attr.aria-label]="'Eliminar inscripción ' + row.id"
+                  [disabled]="deletingId() === row.id"
+                  (click)="onDelete(row)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
             </td>
           </ng-container>
 
