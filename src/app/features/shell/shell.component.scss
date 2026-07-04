@@ -1,15 +1,38 @@
+@use '@angular/material' as mat;
+
 :host {
   display: flex;
   flex-direction: column;
   height: 100vh;
 }
 
+mat-toolbar {
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+
+  button[mat-icon-button] {
+    @include mat.icon-button-overrides(
+      (
+        container-shape: 8px,
+      )
+    );
+    border-radius: 8px;
+    background-color: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+
+  button[mat-button] {
+    background-color: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
+  }
+}
+
 .toolbar-title {
   font-size: 1.25rem;
-  font-weight: 500;
+  font-weight: 600;
   margin-left: 8px;
   flex: 1;
-  color: var(--mat-sys-on-primary);
+  color: var(--mat-sys-on-surface);
   pointer-events: none;
   user-select: none;
 }
@@ -24,6 +47,29 @@
 
 mat-sidenav {
   width: 240px;
+
+  @include mat.list-overrides(
+    (
+      list-item-container-shape: 8px,
+      active-indicator-shape: 8px,
+    )
+  );
+
+  mat-nav-list {
+    padding: 8px 12px;
+  }
+
+  a[mat-list-item].active {
+    @include mat.list-overrides(
+      (
+        list-item-container-color: var(--mat-sys-primary-container),
+        list-item-label-text-color: var(--mat-sys-on-primary-container),
+        list-item-hover-label-text-color: var(--mat-sys-on-primary-container),
+        list-item-focus-label-text-color: var(--mat-sys-on-primary-container),
+      )
+    );
+    font-weight: 500;
+  }
 }
 
 .nav-section-header {

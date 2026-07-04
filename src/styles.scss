@@ -10,11 +10,82 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
+        primary: mat.$violet-palette,
         tertiary: mat.$blue-palette,
       ),
       typography: Roboto,
       density: 0,
+    )
+  );
+
+  // Berry-inspired look: deep purple primary, blue accent, white surfaces
+  // over a light grey-blue app background.
+  @include mat.theme-overrides(
+    (
+      primary: #673ab7,
+      on-primary: #ffffff,
+      primary-container: #ede7f6,
+      on-primary-container: #5e35b1,
+      secondary-container: #ede7f6,
+      on-secondary-container: #5e35b1,
+      tertiary: #2196f3,
+      on-tertiary: #ffffff,
+      tertiary-container: #e3f2fd,
+      on-tertiary-container: #1565c0,
+      background: #eef2f6,
+      on-background: #364152,
+      surface: #ffffff,
+      on-surface: #364152,
+      on-surface-variant: #697586,
+      surface-container-lowest: #ffffff,
+      surface-container-low: #ffffff,
+      surface-container: #ffffff,
+      surface-container-high: #ffffff,
+      surface-container-highest: #eef2f6,
+      outline: #9aa8bd,
+      outline-variant: #e3e8ef,
+    )
+  );
+
+  // Berry uses rounded rectangles (~8px) instead of the M3 pill/large radii.
+  @include mat.button-overrides(
+    (
+      filled-container-shape: 8px,
+      outlined-container-shape: 8px,
+      text-container-shape: 8px,
+      protected-container-shape: 8px,
+    )
+  );
+
+  @include mat.card-overrides(
+    (
+      elevated-container-shape: 8px,
+      outlined-container-shape: 8px,
+      elevated-container-color: #ffffff,
+      outlined-container-color: #ffffff,
+      outlined-outline-color: transparent,
+      elevated-container-elevation: 0 2px 14px rgba(32, 40, 45, 0.08),
+      outlined-container-elevation: 0 2px 14px rgba(32, 40, 45, 0.08),
+    )
+  );
+
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 8px,
+      outlined-outline-color: #cbd5e1,
+    )
+  );
+
+  @include mat.dialog-overrides(
+    (
+      container-shape: 12px,
+    )
+  );
+
+  @include mat.sidenav-overrides(
+    (
+      container-shape: 0,
+      container-divider-color: transparent,
     )
   );
 }
@@ -28,8 +99,8 @@ body {
   // Set a default background, font and text colors for the application using
   // Angular Material's system-level CSS variables. Learn more about these
   // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
+  background-color: var(--mat-sys-background);
+  color: var(--mat-sys-on-background);
   font: var(--mat-sys-body-medium);
 
   // Reset the user agent margin.
@@ -42,4 +113,22 @@ body {
   --mdc-snackbar-container-color: var(--mat-sys-error);
   --mat-snack-bar-button-color: var(--mat-sys-on-error);
   --mdc-snackbar-supporting-text-color: var(--mat-sys-on-error);
+}
+
+// Data table conventions (M3 defines no row-hover token, so this is a global
+// pattern rather than a mat.table-overrides token): every <table mat-table>
+// gets the same hover feedback automatically.
+.mat-mdc-table tr.mat-mdc-row:hover {
+  background-color: var(--mat-sys-surface-container-highest);
+}
+
+// Utility class for a horizontal group of icon buttons inside a table cell
+// (e.g. an "actions" column). Apply to a wrapper element inside the <td>,
+// not to the <td> itself — a table cell must keep `display: table-cell` to
+// stay aligned with its row's height, so the flex layout goes on this inner
+// wrapper instead.
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
