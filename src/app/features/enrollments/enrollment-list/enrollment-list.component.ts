@@ -79,7 +79,7 @@ export class EnrollmentListComponent implements OnInit, AfterViewInit {
 
   readonly title = computed(() => {
     const cycle = this.currentCycle();
-    return `Materias del ciclo actual: ${cycle?.description ?? '…'}`;
+    return `Inscripciones del ciclo actual: ${cycle?.description ?? '…'}`;
   });
 
   readonly dataSource = new MatTableDataSource<EnrollmentRow>([]);

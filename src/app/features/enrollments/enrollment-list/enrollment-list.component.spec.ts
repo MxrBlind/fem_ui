@@ -116,12 +116,12 @@ describe('EnrollmentListComponent', () => {
   describe('title rendering', () => {
     it('renders the title with the loaded cycle description', () => {
       const { fixture } = setup(admin);
-      expect(text(fixture)).toContain('Materias del ciclo actual: 2026-I');
+      expect(text(fixture)).toContain('Inscripciones del ciclo actual: 2026-I');
     });
 
     it('renders a placeholder while the cycle is loading', () => {
       const { fixture, http } = setup(admin, { skipFlush: true });
-      expect(text(fixture)).toContain('Materias del ciclo actual: …');
+      expect(text(fixture)).toContain('Inscripciones del ciclo actual: …');
       http.expectOne(`${environment.apiBaseUrl}/api/cycle/current`).flush({
         description: '2026-I',
         startDate: '',
