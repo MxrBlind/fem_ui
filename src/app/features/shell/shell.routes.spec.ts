@@ -8,8 +8,10 @@ describe('SHELL_ROUTES', () => {
     expect(route?.loadComponent).toBeDefined();
   });
 
-  it('no longer registers the retired "ciclo-actual" path', () => {
+  it('exposes the current-cycle list under the "ciclo-actual" path, admin-only', () => {
     const route = SHELL_ROUTES.find((r) => r.path === 'ciclo-actual');
-    expect(route).toBeUndefined();
+    expect(route).toBeDefined();
+    expect(route?.data?.['roles']).toEqual(['admin']);
+    expect(route?.loadComponent).toBeDefined();
   });
 });

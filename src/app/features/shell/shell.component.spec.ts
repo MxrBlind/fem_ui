@@ -97,22 +97,18 @@ describe('ShellComponent', () => {
   });
 
   describe('"Ciclo actual" link', () => {
-    it('1.10a visible for admin and is inert (no enrollment-list destination)', () => {
+    it('1.10a visible for admin and routes to /ciclo-actual', () => {
       const fixture = setup(admin);
       expect(textVisible(fixture, 'Ciclo actual')).toBe(true);
       const link = Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
         (el.textContent ?? '').includes('Ciclo actual')
       );
-      expect(link?.getAttribute('href')).not.toBe('/inscripciones');
+      expect(link?.getAttribute('href')).toBe('/ciclo-actual');
     });
 
-    it('1.10b visible for teacher and is inert (no enrollment-list destination)', () => {
+    it('1.10b absent for teacher', () => {
       const fixture = setup(teacher);
-      expect(textVisible(fixture, 'Ciclo actual')).toBe(true);
-      const link = Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
-        (el.textContent ?? '').includes('Ciclo actual')
-      );
-      expect(link?.getAttribute('href')).not.toBe('/inscripciones');
+      expect(textVisible(fixture, 'Ciclo actual')).toBe(false);
     });
 
     it('1.10c absent for student', () => {

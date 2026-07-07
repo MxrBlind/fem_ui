@@ -31,4 +31,13 @@ export const SHELL_ROUTES: Routes = [
         (m) => m.EnrollmentListComponent
       ),
   },
+  {
+    path: 'ciclo-actual',
+    canMatch: [roleGuard],
+    data: { roles: ['admin'] },
+    loadComponent: () =>
+      import('../current-cycle/current-cycle-list/current-cycle-list.component').then(
+        (m) => m.CurrentCycleListComponent
+      ),
+  },
 ];
