@@ -1,0 +1,130 @@
+<section class="current-cycle-list">
+  <header class="current-cycle-list__header">
+    <h2 class="current-cycle-list__title mat-headline-small">{{ title() }}</h2>
+
+    <button
+      *hasRole="['admin']"
+      mat-flat-button
+      color="primary"
+      type="button"
+      (click)="onCreate()"
+    >
+      <mat-icon>add</mat-icon>
+      Nuevo curso
+    </button>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando cursos del ciclo actual" />
+  }
+
+  <mat-card class="current-cycle-list__card">
+    <mat-form-field appearance="outline" class="current-cycle-list__filter">
+      <mat-label>Buscar</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [value]="filterText()"
+        (input)="onFilterInput(($any($event.target)).value)"
+      />
+      @if (filterText().length > 0) {
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          aria-label="Limpiar filtro"
+          (click)="clearFilter()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    @if (!loading() && rows().length === 0) {
+      <div class="current-cycle-list__empty">
+        <mat-icon>inbox</mat-icon>
+        <p class="mat-body-large">No hay cursos en el ciclo actual.</p>
+      </div>
+    } @else {
+      <div class="current-cycle-list__table-wrapper">
+        <table
+          mat-table
+          matSort
+          [dataSource]="dataSource"
+          class="current-cycle-list__table"
+        >
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+            <td mat-cell *matCellDef="let row">{{ row.id }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="subjectDescription">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre del curso</th>
+            <td mat-cell *matCellDef="let row">{{ row.subjectDescription }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="credits">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Créditos</th>
+            <td mat-cell *matCellDef="let row">{{ row.credits }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="teacherFullName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Profesor</th>
+            <td mat-cell *matCellDef="let row">{{ row.teacherFullName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="categoryTitle">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoría</th>
+            <td mat-cell *matCellDef="let row">{{ row.categoryTitle }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="levelTitle">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nivel</th>
+            <td mat-cell *matCellDef="let row">{{ row.levelTitle }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Acciones</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="row-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Editar"
+                  [attr.aria-label]="'Editar curso ' + row.id"
+                  (click)="onEdit(row)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  *hasRole="['admin']"
+                  mat-icon-button
+                  color="warn"
+                  type="button"
+                  matTooltip="Eliminar"
+                  data-testid="current-cycle-delete-button"
+                  [attr.aria-label]="'Eliminar curso ' + row.id"
+                  (click)="onDelete(row)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+
+        <mat-paginator
+          [pageSizeOptions]="[10, 25, 50]"
+          [pageSize]="10"
+          showFirstLastButtons
+          aria-label="Paginación de cursos"
+        />
+      </div>
+    }
+  </mat-card>
+</section>

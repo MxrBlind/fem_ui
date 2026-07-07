@@ -58,3 +58,13 @@ export interface EnrollmentRow {
   grade: number;
   raw: EnrollmentDto;
 }
+
+export interface CourseRow {
+  id: number;
+  subjectDescription: string;
+  credits: number;
+  teacherFullName: string;
+  categoryTitle: string;
+  levelTitle: string;
+  raw: CourseDto;
+}
