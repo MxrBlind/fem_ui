@@ -4,7 +4,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { signal } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { of, Subject } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 
@@ -12,6 +13,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { CourseDto } from '@features/enrollments/models/enrollment.model';
+import { CourseNewComponent } from '../course-new/course-new.component';
 import { CurrentCycleListComponent } from './current-cycle-list.component';
 
 const admin: AuthUser = { id: 1, username: 'admin', role: 'admin', rawRole: 'admin' };
@@ -228,17 +230,63 @@ describe('CurrentCycleListComponent', () => {
   });
 
   describe('placeholder actions', () => {
-    it('onCreate, onEdit, onDelete do not open a dialog', () => {
+    it('onEdit and onDelete remain placeholders that only log', () => {
       const openSpy = vi.spyOn(MatDialog.prototype, 'open');
       const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
       const { fixture } = setup(admin);
       const row = fixture.componentInstance.dataSource.data[0];
-      fixture.componentInstance.onCreate();
       fixture.componentInstance.onEdit(row);
       fixture.componentInstance.onDelete(row);
       expect(openSpy).not.toHaveBeenCalled();
       expect(debugSpy).toHaveBeenCalled();
       debugSpy.mockRestore();
+      openSpy.mockRestore();
+    });
+  });
+
+  describe('onCreate opens the course-new dialog and refreshes on success', () => {
+    function fakeDialogRef(closed: unknown) {
+      return {
+        afterClosed: () => (closed instanceof Subject ? closed.asObservable() : of(closed)),
+      } as unknown as MatDialogRef<unknown>;
+    }
+
+    it('opens CourseNewComponent with expected config', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(undefined));
+      const { fixture } = setup(admin);
+      fixture.componentInstance.onCreate();
+      expect(openSpy).toHaveBeenCalledTimes(1);
+      const [comp, config] = openSpy.mock.calls[0];
+      expect(comp).toBe(CourseNewComponent);
+      expect(config).toEqual(
+        expect.objectContaining({ width: '480px', autoFocus: 'first-tabbable' })
+      );
+      openSpy.mockRestore();
+    });
+
+    it('re-fetches the cycle courses when the dialog returns a CourseDto', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(makeCourse(99)));
+      const { fixture, http } = setup(admin);
+      fixture.componentInstance.onCreate();
+      const refresh = http.expectOne(`${environment.apiBaseUrl}/api/course/cycle/42`);
+      refresh.flush([makeCourse(1), makeCourse(2), makeCourse(3), makeCourse(99)]);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.rows().length).toBe(4);
+      openSpy.mockRestore();
+    });
+
+    it('does not refetch when the dialog closes with undefined', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(undefined));
+      const { fixture, http } = setup(admin);
+      fixture.componentInstance.onCreate();
+      http.expectNone(`${environment.apiBaseUrl}/api/course/cycle/42`);
+      expect(fixture.componentInstance.rows().length).toBe(3);
       openSpy.mockRestore();
     });
   });
