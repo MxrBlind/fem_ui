@@ -31,6 +31,7 @@ import { CourseService } from '@core/services/course.service';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
 import { CourseDto, CourseRow } from '@features/enrollments/models/enrollment.model';
+import { CourseEditComponent } from '../course-edit/course-edit.component';
 import { CourseNewComponent } from '../course-new/course-new.component';
 
 const LOAD_ERROR_MESSAGE =
@@ -166,25 +167,39 @@ export class CurrentCycleListComponent implements OnInit, AfterViewInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((created) => {
         if (!created) return;
-        const cycleId = this.currentCycle()?.id;
-        if (cycleId == null) return;
-        this.courseService
-          .listByCycleAsRows(cycleId)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (rows) => {
-              this.rows.set(rows);
-              this.dataSource.data = rows;
-            },
-            error: (err) => {
-              console.error('[current-cycle-list] failed to refresh after create', err);
-            },
-          });
+        this.refreshRows('create');
       });
   }
 
   onEdit(row: CourseRow): void {
-    console.debug('[current-cycle-list] onEdit placeholder', row?.id);
+    const ref = this.dialog.open<CourseEditComponent, CourseDto, CourseDto>(
+      CourseEditComponent,
+      { width: '480px', autoFocus: 'first-tabbable', data: row.raw }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated) => {
+        if (!updated) return;
+        this.refreshRows('edit');
+      });
+  }
+
+  private refreshRows(source: 'create' | 'edit'): void {
+    const cycleId = this.currentCycle()?.id;
+    if (cycleId == null) return;
+    this.courseService
+      .listByCycleAsRows(cycleId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (rows) => {
+          this.rows.set(rows);
+          this.dataSource.data = rows;
+        },
+        error: (err) => {
+          console.error(`[current-cycle-list] failed to refresh after ${source}`, err);
+        },
+      });
   }
 
   onDelete(row: CourseRow): void {

@@ -13,6 +13,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { CourseDto } from '@features/enrollments/models/enrollment.model';
+import { CourseEditComponent } from '../course-edit/course-edit.component';
 import { CourseNewComponent } from '../course-new/course-new.component';
 import { CurrentCycleListComponent } from './current-cycle-list.component';
 
@@ -230,16 +231,69 @@ describe('CurrentCycleListComponent', () => {
   });
 
   describe('placeholder actions', () => {
-    it('onEdit and onDelete remain placeholders that only log', () => {
+    it('onDelete remains a placeholder that only logs', () => {
       const openSpy = vi.spyOn(MatDialog.prototype, 'open');
       const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
       const { fixture } = setup(admin);
       const row = fixture.componentInstance.dataSource.data[0];
-      fixture.componentInstance.onEdit(row);
       fixture.componentInstance.onDelete(row);
       expect(openSpy).not.toHaveBeenCalled();
       expect(debugSpy).toHaveBeenCalled();
       debugSpy.mockRestore();
+      openSpy.mockRestore();
+    });
+  });
+
+  describe('onEdit opens the course-edit dialog and refreshes on success', () => {
+    function fakeDialogRef(closed: unknown) {
+      return {
+        afterClosed: () => (closed instanceof Subject ? closed.asObservable() : of(closed)),
+      } as unknown as MatDialogRef<unknown>;
+    }
+
+    it('opens CourseEditComponent with data set to row.raw', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(undefined));
+      const { fixture } = setup(admin);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onEdit(row);
+      expect(openSpy).toHaveBeenCalledTimes(1);
+      const [comp, config] = openSpy.mock.calls[0];
+      expect(comp).toBe(CourseEditComponent);
+      expect(config).toEqual(
+        expect.objectContaining({
+          width: '480px',
+          autoFocus: 'first-tabbable',
+          data: row.raw,
+        })
+      );
+      openSpy.mockRestore();
+    });
+
+    it('re-fetches the cycle courses when the dialog returns a CourseDto', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(makeCourse(1, { credits: 99 })));
+      const { fixture, http } = setup(admin);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onEdit(row);
+      const refresh = http.expectOne(`${environment.apiBaseUrl}/api/course/cycle/42`);
+      refresh.flush([makeCourse(1, { credits: 99 }), makeCourse(2), makeCourse(3)]);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.rows().length).toBe(3);
+      expect(fixture.componentInstance.rows()[0].credits).toBe(99);
+      openSpy.mockRestore();
+    });
+
+    it('does not refetch when the dialog closes with undefined', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(undefined));
+      const { fixture, http } = setup(admin);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onEdit(row);
+      http.expectNone(`${environment.apiBaseUrl}/api/course/cycle/42`);
       openSpy.mockRestore();
     });
   });
