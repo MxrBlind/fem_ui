@@ -4,7 +4,10 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { CourseDto } from '../../features/enrollments/models/enrollment.model';
+import {
+  CourseDto,
+  CreateCourseRequest,
+} from '../../features/enrollments/models/enrollment.model';
 import { CourseService } from './course.service';
 
 describe('CourseService', () => {
@@ -48,5 +51,44 @@ describe('CourseService', () => {
       .expectOne(`${environment.apiBaseUrl}/api/course/cycle/7`)
       .flush('boom', { status: 500, statusText: 'Server Error' });
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
+
+  describe('create()', () => {
+    const payload: CreateCourseRequest = {
+      subject: { id: 12 },
+      teacher: { id: 34 },
+      cycle: { id: 56 },
+      credits: 3,
+    };
+
+    it('POSTs the exact payload to /api/course and returns the created course', async () => {
+      const created: CourseDto = {
+        id: 900,
+        credits: 3,
+        teacher: { id: 34, username: 'tch' },
+        cycle: { id: 56, description: '2026-I', startDate: '', endDate: '' },
+        subject: {
+          id: 12,
+          code: 'MAT101',
+          description: 'Matemáticas I',
+          category: { title: 'Núcleo', description: '', code: 'NUC' },
+          level: {},
+        },
+      };
+      const promise = firstValueFrom(service.create(payload));
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/course`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(payload);
+      req.flush(created);
+      await expect(promise).resolves.toEqual(created);
+    });
+
+    it('propagates HTTP errors from POST /api/course', async () => {
+      const promise = firstValueFrom(service.create(payload));
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/course`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+    });
   });
 });

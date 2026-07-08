@@ -13,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -29,7 +30,8 @@ import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { CourseService } from '@core/services/course.service';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
-import { CourseRow } from '@features/enrollments/models/enrollment.model';
+import { CourseDto, CourseRow } from '@features/enrollments/models/enrollment.model';
+import { CourseNewComponent } from '../course-new/course-new.component';
 
 const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los cursos del ciclo actual. Intenta de nuevo más tarde.';
@@ -41,6 +43,7 @@ const LOAD_ERROR_MESSAGE =
   imports: [
     MatButtonModule,
     MatCardModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -59,6 +62,7 @@ export class CurrentCycleListComponent implements OnInit, AfterViewInit {
   private readonly cycleService = inject(CycleService);
   private readonly courseService = inject(CourseService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly displayedColumns = [
@@ -153,7 +157,30 @@ export class CurrentCycleListComponent implements OnInit, AfterViewInit {
   }
 
   onCreate(): void {
-    console.debug('[current-cycle-list] onCreate placeholder');
+    const ref = this.dialog.open<CourseNewComponent, unknown, CourseDto>(
+      CourseNewComponent,
+      { width: '480px', autoFocus: 'first-tabbable' }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created) => {
+        if (!created) return;
+        const cycleId = this.currentCycle()?.id;
+        if (cycleId == null) return;
+        this.courseService
+          .listByCycleAsRows(cycleId)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: (rows) => {
+              this.rows.set(rows);
+              this.dataSource.data = rows;
+            },
+            error: (err) => {
+              console.error('[current-cycle-list] failed to refresh after create', err);
+            },
+          });
+      });
   }
 
   onEdit(row: CourseRow): void {

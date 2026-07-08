@@ -5,7 +5,11 @@ import { map } from 'rxjs/operators';
 
 import { UserDto } from '@core/models/auth.model';
 import { environment } from '@env/environment';
-import { CourseDto, CourseRow } from '@features/enrollments/models/enrollment.model';
+import {
+  CourseDto,
+  CourseRow,
+  CreateCourseRequest,
+} from '@features/enrollments/models/enrollment.model';
 
 @Injectable({ providedIn: 'root' })
 export class CourseService {
@@ -18,6 +22,10 @@ export class CourseService {
 
   listByCycleAsRows(cycleId: number): Observable<CourseRow[]> {
     return this.listByCycle(cycleId).pipe(map((courses) => courses.map(toRow)));
+  }
+
+  create(payload: CreateCourseRequest): Observable<CourseDto> {
+    return this.http.post<CourseDto>(this.baseUrl, payload);
   }
 }
 

@@ -1,0 +1,112 @@
+<h2 mat-dialog-title>Nuevo curso</h2>
+
+<mat-dialog-content class="course-new__content">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando datos del formulario" />
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="course-new__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Materia</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [matAutocomplete]="subjectAuto"
+        [value]="displaySubjectById(form.controls.subjectId.value)"
+        (input)="onSubjectInput(($any($event.target)).value)"
+        [disabled]="loading() || loadFailed()"
+      />
+      <mat-autocomplete
+        #subjectAuto="matAutocomplete"
+        [displayWith]="displaySubject"
+        (optionSelected)="onSubjectSelected($event.option.value)"
+      >
+        @for (subject of filteredSubjects(); track subject.id) {
+          <mat-option [value]="subject">{{ displaySubject(subject) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (form.controls.subjectId.touched && form.controls.subjectId.hasError('required')) {
+        <mat-error>Selecciona una materia.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Profesor</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [matAutocomplete]="teacherAuto"
+        [value]="displayTeacherById(form.controls.teacherId.value)"
+        (input)="onTeacherInput(($any($event.target)).value)"
+        [disabled]="loading() || loadFailed()"
+      />
+      <mat-autocomplete
+        #teacherAuto="matAutocomplete"
+        [displayWith]="displayTeacher"
+        (optionSelected)="onTeacherSelected($event.option.value)"
+      >
+        @for (teacher of filteredTeachers(); track teacher.id) {
+          <mat-option [value]="teacher">{{ displayTeacher(teacher) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (form.controls.teacherId.touched && form.controls.teacherId.hasError('required')) {
+        <mat-error>Selecciona un profesor.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Ciclo</mat-label>
+      <input
+        matInput
+        type="text"
+        [value]="currentCycle()?.description ?? ''"
+        [readonly]="true"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Créditos</mat-label>
+      <input
+        matInput
+        type="number"
+        formControlName="credits"
+        min="1"
+        max="100"
+        step="1"
+      />
+      @if (form.controls.credits.hasError('required')) {
+        <mat-error>Los créditos son requeridos.</mat-error>
+      } @else if (form.controls.credits.hasError('min')) {
+        <mat-error>El valor mínimo es 1.</mat-error>
+      } @else if (form.controls.credits.hasError('max')) {
+        <mat-error>El valor máximo es 100.</mat-error>
+      } @else if (form.controls.credits.hasError('pattern')) {
+        <mat-error>Los créditos deben ser un número entero.</mat-error>
+      }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || saving() || loadFailed()"
+  >
+    @if (saving()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="18"
+        class="course-new__spinner"
+      />
+    }
+    Crear
+  </button>
+</mat-dialog-actions>

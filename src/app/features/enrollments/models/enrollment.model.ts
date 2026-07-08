@@ -49,6 +49,13 @@ export interface CreateEnrollmentRequest {
   active: true;
 }
 
+export interface CreateCourseRequest {
+  subject: { id: number };
+  teacher: { id: number };
+  cycle: { id: number };
+  credits: number;
+}
+
 export interface EnrollmentRow {
   id: number;
   fullName: string;
