@@ -27,6 +27,13 @@ export class CourseService {
   create(payload: CreateCourseRequest): Observable<CourseDto> {
     return this.http.post<CourseDto>(this.baseUrl, payload);
   }
+
+  update(id: number, payload: CourseDto): Observable<CourseDto> {
+    return this.http.put<CourseDto>(
+      `${this.baseUrl}/${id}?includeDependencies=false`,
+      payload
+    );
+  }
 }
 
 export function toRow(course: CourseDto): CourseRow {

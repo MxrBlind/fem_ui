@@ -1,0 +1,22 @@
+:host {
+  display: block;
+  min-width: 380px;
+}
+
+.course-edit__content {
+  display: block;
+  min-height: 4px;
+}
+
+.course-edit__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.course-edit__spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
