@@ -91,4 +91,22 @@ describe('CourseService', () => {
       await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
     });
   });
+
+  describe('delete()', () => {
+    it('DELETEs /api/course/{id} and completes on 204', async () => {
+      const promise = firstValueFrom(service.delete(42));
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/course/42`);
+      expect(req.request.method).toBe('DELETE');
+      req.flush(null, { status: 204, statusText: 'No Content' });
+      await expect(promise).resolves.toBeNull();
+    });
+
+    it('propagates HTTP errors from DELETE /api/course/{id}', async () => {
+      const promise = firstValueFrom(service.delete(42));
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/course/42`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+    });
+  });
 });

@@ -23,19 +23,22 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { finalize } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { finalize, of } from 'rxjs';
+import { catchError, filter, switchMap } from 'rxjs/operators';
 
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { CourseService } from '@core/services/course.service';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
 import { CourseDto, CourseRow } from '@features/enrollments/models/enrollment.model';
+import { CourseDeleteConfirmComponent } from '../course-delete-confirm/course-delete-confirm.component';
 import { CourseEditComponent } from '../course-edit/course-edit.component';
 import { CourseNewComponent } from '../course-new/course-new.component';
 
 const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los cursos del ciclo actual. Intenta de nuevo más tarde.';
+export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
+export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
 
 @Component({
   selector: 'app-current-cycle-list',
@@ -80,6 +83,7 @@ export class CurrentCycleListComponent implements OnInit, AfterViewInit {
   readonly currentCycle = signal<CycleDto | null>(null);
   readonly loading = signal(true);
   readonly filterText = signal('');
+  readonly deletingId = signal<number | null>(null);
 
   readonly title = computed(() => {
     const cycle = this.currentCycle();
@@ -185,7 +189,7 @@ export class CurrentCycleListComponent implements OnInit, AfterViewInit {
       });
   }
 
-  private refreshRows(source: 'create' | 'edit'): void {
+  private refreshRows(source: 'create' | 'edit' | 'delete'): void {
     const cycleId = this.currentCycle()?.id;
     if (cycleId == null) return;
     this.courseService
@@ -203,6 +207,46 @@ export class CurrentCycleListComponent implements OnInit, AfterViewInit {
   }
 
   onDelete(row: CourseRow): void {
-    console.debug('[current-cycle-list] onDelete placeholder', row?.id);
+    const ref = this.dialog.open<
+      CourseDeleteConfirmComponent,
+      { row: CourseRow },
+      boolean
+    >(CourseDeleteConfirmComponent, {
+      width: '420px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: { row },
+    });
+
+    ref
+      .afterClosed()
+      .pipe(
+        filter((confirmed): confirmed is true => confirmed === true),
+        switchMap(() => {
+          this.deletingId.set(row.id);
+          return this.courseService.delete(row.id).pipe(
+            switchMap(() => {
+              const cycleId = this.currentCycle()?.id ?? 0;
+              return this.courseService.listByCycleAsRows(cycleId);
+            }),
+            catchError((err) => {
+              console.error('[current-cycle-list] failed to delete', err);
+              this.snackBar.open(DELETE_ERROR_MESSAGE, 'Cerrar', {
+                duration: 5000,
+                panelClass: 'snackbar-error',
+              });
+              return of(null);
+            }),
+            finalize(() => this.deletingId.set(null))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((rows) => {
+        if (rows === null) return;
+        this.rows.set(rows);
+        this.dataSource.data = rows;
+        this.snackBar.open(DELETE_SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
+      });
   }
 }

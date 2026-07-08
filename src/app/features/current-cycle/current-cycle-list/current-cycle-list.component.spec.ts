@@ -13,9 +13,14 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { CourseDto } from '@features/enrollments/models/enrollment.model';
+import { CourseDeleteConfirmComponent } from '../course-delete-confirm/course-delete-confirm.component';
 import { CourseEditComponent } from '../course-edit/course-edit.component';
 import { CourseNewComponent } from '../course-new/course-new.component';
-import { CurrentCycleListComponent } from './current-cycle-list.component';
+import {
+  CurrentCycleListComponent,
+  DELETE_ERROR_MESSAGE,
+  DELETE_SUCCESS_MESSAGE,
+} from './current-cycle-list.component';
 
 const admin: AuthUser = { id: 1, username: 'admin', role: 'admin', rawRole: 'admin' };
 const teacher: AuthUser = { id: 2, username: 'teacher', role: 'teacher', rawRole: 'teacher' };
@@ -230,17 +235,110 @@ describe('CurrentCycleListComponent', () => {
     });
   });
 
-  describe('placeholder actions', () => {
-    it('onDelete remains a placeholder that only logs', () => {
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open');
-      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+  describe('onDelete opens the confirm dialog and handles the API flow', () => {
+    function fakeDialogRef(closed: unknown) {
+      return {
+        afterClosed: () => (closed instanceof Subject ? closed.asObservable() : of(closed)),
+      } as unknown as MatDialogRef<unknown>;
+    }
+
+    it('opens CourseDeleteConfirmComponent with data { row }', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(false));
       const { fixture } = setup(admin);
       const row = fixture.componentInstance.dataSource.data[0];
       fixture.componentInstance.onDelete(row);
-      expect(openSpy).not.toHaveBeenCalled();
-      expect(debugSpy).toHaveBeenCalled();
-      debugSpy.mockRestore();
+      expect(openSpy).toHaveBeenCalledTimes(1);
+      const [comp, config] = openSpy.mock.calls[0];
+      expect(comp).toBe(CourseDeleteConfirmComponent);
+      expect(config).toEqual(
+        expect.objectContaining({
+          width: '420px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+          data: { row },
+        })
+      );
       openSpy.mockRestore();
+    });
+
+    it('confirmed close calls DELETE /api/course/{id} then refreshes and shows success snackbar', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(true));
+      const { fixture, http, snackOpen } = setup(admin);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onDelete(row);
+
+      const del = http.expectOne(`${environment.apiBaseUrl}/api/course/${row.id}`);
+      expect(del.request.method).toBe('DELETE');
+      del.flush(null, { status: 204, statusText: 'No Content' });
+
+      const refresh = http.expectOne(`${environment.apiBaseUrl}/api/course/cycle/42`);
+      refresh.flush([makeCourse(2), makeCourse(3)]);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.rows().length).toBe(2);
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_SUCCESS_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 3000 })
+      );
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      openSpy.mockRestore();
+    });
+
+    it('failed DELETE shows error snackbar, keeps rows, logs, and resets deletingId', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(true));
+      const { fixture, http, snackOpen } = setup(admin);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onDelete(row);
+
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/course/${row.id}`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+
+      http.expectNone(`${environment.apiBaseUrl}/api/course/cycle/42`);
+      expect(fixture.componentInstance.rows().length).toBe(3);
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_ERROR_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ panelClass: 'snackbar-error', duration: 5000 })
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[current-cycle-list] failed to delete',
+        expect.anything()
+      );
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      errorSpy.mockRestore();
+      openSpy.mockRestore();
+    });
+
+    it('cancel/undefined close does not call the service', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(fakeDialogRef(false));
+      const { fixture, http } = setup(admin);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onDelete(row);
+      http.expectNone(`${environment.apiBaseUrl}/api/course/${row.id}`);
+      expect(fixture.componentInstance.rows().length).toBe(3);
+      openSpy.mockRestore();
+    });
+
+    it('disables the row delete button while deletingId matches', () => {
+      const { fixture } = setup(admin);
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.deletingId.set(row.id);
+      fixture.detectChanges();
+      const btn = fixture.debugElement.query(
+        By.css(`button[aria-label="Eliminar curso ${row.id}"]`)
+      );
+      expect((btn.nativeElement as HTMLButtonElement).disabled).toBe(true);
     });
   });
 

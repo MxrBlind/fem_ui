@@ -106,6 +106,7 @@
                   matTooltip="Eliminar"
                   data-testid="current-cycle-delete-button"
                   [attr.aria-label]="'Eliminar curso ' + row.id"
+                  [disabled]="deletingId() === row.id"
                   (click)="onDelete(row)"
                 >
                   <mat-icon>delete</mat-icon>
