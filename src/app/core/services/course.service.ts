@@ -34,6 +34,10 @@ export class CourseService {
       payload
     );
   }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }
 
 export function toRow(course: CourseDto): CourseRow {
