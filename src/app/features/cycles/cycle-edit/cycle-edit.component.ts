@@ -16,9 +16,14 @@ import {
 } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -29,31 +34,35 @@ import { UserDto } from '@core/models/auth.model';
 import { CycleService } from '@core/services/cycle.service';
 import { UserService } from '@core/services/user.service';
 import {
-  CreateCycleRequest,
   CycleDto,
+  UpdateCycleRequest,
 } from '@features/enrollments/models/cycle.model';
 import {
   END_BEFORE_START_MESSAGE,
   endAfterStartValidator,
   nonBlankValidator,
+  parseIsoDate,
   toIsoDateString,
 } from '../shared/cycle-form.utils';
 
-export { END_BEFORE_START_MESSAGE, endAfterStartValidator, toIsoDateString };
-
-export const SUCCESS_MESSAGE = 'Registro creado exitosamente';
-export const ERROR_MESSAGE = 'Error al crear este registro';
+export const SUCCESS_MESSAGE = 'Registro actualizado exitosamente';
+export const ERROR_MESSAGE = 'Error al actualizar este registro';
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los datos del formulario';
 
+export interface CycleEditDialogData {
+  cycle: CycleDto;
+}
+
 @Component({
-  selector: 'app-cycle-new',
+  selector: 'app-cycle-edit',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
     MatAutocompleteModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatDatepickerModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -64,18 +73,19 @@ export const LOAD_ERROR_MESSAGE =
     MatSnackBarModule,
   ],
   providers: [provideNativeDateAdapter()],
-  templateUrl: './cycle-new.component.html',
-  styleUrl: './cycle-new.component.scss',
+  templateUrl: './cycle-edit.component.html',
+  styleUrl: './cycle-edit.component.scss',
 })
-export class CycleNewComponent implements OnInit {
+export class CycleEditComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly userService = inject(UserService);
   private readonly cycleService = inject(CycleService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogRef = inject(
-    MatDialogRef<CycleNewComponent, CycleDto>
+    MatDialogRef<CycleEditComponent, CycleDto>
   );
+  private readonly data = inject<CycleEditDialogData>(MAT_DIALOG_DATA);
 
   readonly loading = signal(true);
   readonly loadFailed = signal(false);
@@ -95,7 +105,7 @@ export class CycleNewComponent implements OnInit {
 
   readonly form = this.fb.nonNullable.group(
     {
-      description: new FormControl<string>('', {
+      description: new FormControl<string>(this.data.cycle.description ?? '', {
         nonNullable: true,
         validators: [
           Validators.required,
@@ -103,15 +113,21 @@ export class CycleNewComponent implements OnInit {
           nonBlankValidator,
         ],
       }),
-      startDate: new FormControl<Date | null>(null, {
-        validators: [Validators.required],
+      startDate: new FormControl<Date | null>(
+        parseIsoDate(this.data.cycle.startDate),
+        { validators: [Validators.required] }
+      ),
+      endDate: new FormControl<Date | null>(
+        parseIsoDate(this.data.cycle.endDate),
+        { validators: [Validators.required] }
+      ),
+      current: new FormControl<boolean>(this.data.cycle.current ?? false, {
+        nonNullable: true,
       }),
-      endDate: new FormControl<Date | null>(null, {
-        validators: [Validators.required],
-      }),
-      principalId: new FormControl<number | null>(null, {
-        validators: [Validators.required],
-      }),
+      principalId: new FormControl<number | null>(
+        this.data.cycle.principal?.id ?? null,
+        { validators: [Validators.required] }
+      ),
     },
     { validators: [endAfterStartValidator] }
   );
@@ -124,11 +140,18 @@ export class CycleNewComponent implements OnInit {
       .subscribe({
         next: (teachers) => {
           this.teachers.set(teachers);
+          const principalId = this.form.controls.principalId.value;
+          if (principalId != null) {
+            const selected = teachers.find((u) => u.id === principalId);
+            if (selected) {
+              this.principalSearch.set(this.displayTeacher(selected));
+            }
+          }
           this.loading.set(false);
           this.form.enable();
         },
         error: (err: unknown) => {
-          console.error('[cycle-new] failed to load form data', err);
+          console.error('[cycle-edit] failed to load form data', err);
           this.loadFailed.set(true);
           this.loading.set(false);
           this.snackBar.open(LOAD_ERROR_MESSAGE, 'Cerrar', {
@@ -175,22 +198,26 @@ export class CycleNewComponent implements OnInit {
   onSubmit(): void {
     if (this.form.invalid || this.saving() || this.loadFailed()) return;
 
-    const { description, startDate, endDate, principalId } =
+    const cycleId = this.data.cycle.id;
+    if (cycleId == null) return;
+
+    const { description, startDate, endDate, current, principalId } =
       this.form.getRawValue();
     if (!startDate || !endDate || principalId == null) return;
 
-    const payload: CreateCycleRequest = {
+    const payload: UpdateCycleRequest = {
       description: description.trim(),
       startDate: toIsoDateString(startDate),
       endDate: toIsoDateString(endDate),
       principal: { id: principalId },
+      current,
     };
 
     this.saving.set(true);
     this.form.disable();
 
     this.cycleService
-      .create(payload)
+      .update(cycleId, payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (dto) => {
@@ -198,7 +225,7 @@ export class CycleNewComponent implements OnInit {
           this.dialogRef.close(dto);
         },
         error: (err: unknown) => {
-          console.error('[cycle-new] failed to create cycle', err);
+          console.error('[cycle-edit] failed to update cycle', err);
           this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
             duration: 3000,
             panelClass: 'snackbar-error',
@@ -213,4 +240,3 @@ export class CycleNewComponent implements OnInit {
     this.dialogRef.close();
   }
 }
-

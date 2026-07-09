@@ -3,7 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, shareReplay } from 'rxjs';
 
 import { environment } from '@env/environment';
-import { CreateCycleRequest, CycleDto } from '@features/enrollments/models/cycle.model';
+import {
+  CreateCycleRequest,
+  CycleDto,
+  UpdateCycleRequest,
+} from '@features/enrollments/models/cycle.model';
 
 @Injectable({ providedIn: 'root' })
 export class CycleService {
@@ -27,6 +31,10 @@ export class CycleService {
 
   create(payload: CreateCycleRequest): Observable<CycleDto> {
     return this.http.post<CycleDto>(this.baseUrl, payload);
+  }
+
+  update(id: number, payload: UpdateCycleRequest): Observable<CycleDto> {
+    return this.http.put<CycleDto>(`${this.baseUrl}/${id}`, payload);
   }
 
   delete(id: number): Observable<void> {
