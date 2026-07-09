@@ -7,20 +7,24 @@ import { signal } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
+import { CycleDeleteConfirmComponent } from '../cycle-delete-confirm/cycle-delete-confirm.component';
 import {
   CycleListComponent,
+  DELETE_ERROR_MESSAGE,
+  DELETE_SUCCESS_MESSAGE,
   LOAD_ERROR_MESSAGE,
   NOT_IMPLEMENTED_MESSAGE,
   PRINCIPAL_FALLBACK,
 } from './cycle-list.component';
 
 const admin: AuthUser = { id: 1, username: 'admin', role: 'admin', rawRole: 'admin' };
+const teacher: AuthUser = { id: 2, username: 'teacher', role: 'teacher', rawRole: 'teacher' };
 
 function makeCycle(id: number, overrides: Partial<CycleDto> = {}): CycleDto {
   return {
@@ -290,16 +294,129 @@ describe('CycleListComponent', () => {
       http.expectNone(`${environment.apiBaseUrl}/api/cycle`);
     });
 
-    it('onDelete opens the "Próximamente" snackbar and does not call the service', () => {
-      const { fixture, http, snackOpen } = setup(admin);
+  });
+
+  describe('delete flow', () => {
+    it('delete button is hidden for non-admin users', () => {
+      const { fixture } = setup(teacher);
+      const buttons = fixture.debugElement.queryAll(
+        By.css('button[data-testid="cycle-delete-btn"]')
+      );
+      expect(buttons.length).toBe(0);
+    });
+
+    it('delete button is visible for admins on every row', () => {
+      const { fixture } = setup(admin);
+      const buttons = fixture.debugElement.queryAll(
+        By.css('button[data-testid="cycle-delete-btn"]')
+      );
+      expect(buttons.length).toBe(3);
+    });
+
+    it('onDelete opens CycleDeleteConfirmComponent with the expected config and data', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture } = setup(admin);
+
       const row = fixture.componentInstance.dataSource.data[0];
       fixture.componentInstance.onDelete(row);
+
+      expect(openSpy).toHaveBeenCalledWith(
+        CycleDeleteConfirmComponent,
+        expect.objectContaining({
+          width: '420px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+          data: { row },
+        })
+      );
+      afterClosed$.complete();
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=false, does not call delete and rows are unchanged', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup(admin);
+      const before = fixture.componentInstance.dataSource.data;
+      const callsBefore = snackOpen.mock.calls.length;
+
+      const row = before[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(false);
+      afterClosed$.complete();
+
+      http.expectNone(`${environment.apiBaseUrl}/api/cycle/${row.id}`);
+      http.expectNone(`${environment.apiBaseUrl}/api/cycle`);
+      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(snackOpen.mock.calls.length).toBe(callsBefore);
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=true and success, deletes, reloads list, and shows success snackbar', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup(admin);
+
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      const delReq = http.expectOne(`${environment.apiBaseUrl}/api/cycle/${row.id}`);
+      expect(delReq.request.method).toBe('DELETE');
+      delReq.flush(null, { status: 204, statusText: 'No Content' });
+
+      http.expectOne(`${environment.apiBaseUrl}/api/cycle`).flush([makeCycle(2), makeCycle(3)]);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.rows().length).toBe(2);
+      expect(fixture.componentInstance.rows().some((r) => r.id === row.id)).toBe(false);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
       expect(snackOpen).toHaveBeenCalledWith(
-        NOT_IMPLEMENTED_MESSAGE,
+        DELETE_SUCCESS_MESSAGE,
         'Cerrar',
         expect.objectContaining({ duration: 3000 })
       );
+      openSpy.mockRestore();
+    });
+
+    it('on DELETE error, keeps rows, shows error snackbar, logs, and resets deletingId', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup(admin);
+
+      const row = fixture.componentInstance.dataSource.data[0];
+      const before = fixture.componentInstance.dataSource.data;
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/cycle/${row.id}`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
       http.expectNone(`${environment.apiBaseUrl}/api/cycle`);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_ERROR_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 5000, panelClass: 'snackbar-error' })
+      );
+      expect(errorSpy).toHaveBeenCalledWith('[cycle-list] failed to delete', expect.anything());
+      errorSpy.mockRestore();
+      openSpy.mockRestore();
     });
   });
 });

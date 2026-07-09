@@ -116,12 +116,14 @@
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button
+                  *hasRole="['admin']"
                   mat-icon-button
                   color="warn"
                   type="button"
                   matTooltip="Eliminar ciclo"
                   data-testid="cycle-delete-btn"
                   [attr.aria-label]="'Eliminar ciclo ' + row.id"
+                  [disabled]="deletingId() === row.id"
                   (click)="onDelete(row)"
                 >
                   <mat-icon>delete</mat-icon>

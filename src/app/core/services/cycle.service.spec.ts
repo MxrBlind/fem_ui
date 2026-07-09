@@ -117,6 +117,23 @@ describe('CycleService', () => {
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
 
+  it('delete() issues DELETE /api/cycle/{id} and completes on empty body', async () => {
+    const promise = firstValueFrom(service.delete(42), { defaultValue: undefined });
+    const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle/42`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.body).toBeNull();
+    req.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(promise).resolves.toBeNull();
+  });
+
+  it('delete() surfaces HTTP errors via the observable error channel', async () => {
+    const promise = firstValueFrom(service.delete(42));
+    http
+      .expectOne(`${environment.apiBaseUrl}/api/cycle/42`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
+
   it('shares a single request across multiple subscribers within the session', async () => {
     const cycle: CycleDto = {
       id: 1,

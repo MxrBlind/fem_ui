@@ -28,4 +28,8 @@ export class CycleService {
   create(payload: CreateCycleRequest): Observable<CycleDto> {
     return this.http.post<CycleDto>(this.baseUrl, payload);
   }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

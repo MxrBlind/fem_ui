@@ -23,17 +23,20 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { finalize } from 'rxjs';
+import { catchError, filter, finalize, of, switchMap } from 'rxjs';
 
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
 import { CycleNewComponent } from '../cycle-new/cycle-new.component';
+import { CycleDeleteConfirmComponent } from '../cycle-delete-confirm/cycle-delete-confirm.component';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los ciclos. Intenta de nuevo más tarde.';
 export const NOT_IMPLEMENTED_MESSAGE = 'Próximamente';
 export const PRINCIPAL_FALLBACK = '—';
+export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
+export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
 
 export interface CycleRow {
   id: number;
@@ -88,6 +91,7 @@ export class CycleListComponent implements OnInit, AfterViewInit {
   readonly rows = signal<CycleRow[]>([]);
   readonly loading = signal(true);
   readonly filterText = signal('');
+  readonly deletingId = signal<number | null>(null);
 
   readonly dataSource = new MatTableDataSource<CycleRow>([]);
 
@@ -206,8 +210,44 @@ export class CycleListComponent implements OnInit, AfterViewInit {
   }
 
   onDelete(row: CycleRow): void {
-    console.debug('[cycle-list] onDelete not implemented yet', row.id);
-    this.showNotImplemented();
+    const ref = this.dialog.open<CycleDeleteConfirmComponent, { row: CycleRow }, boolean>(
+      CycleDeleteConfirmComponent,
+      {
+        width: '420px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+        data: { row },
+      }
+    );
+
+    ref
+      .afterClosed()
+      .pipe(
+        filter((confirmed): confirmed is true => confirmed === true),
+        switchMap(() => {
+          this.deletingId.set(row.id);
+          return this.cycleService.delete(row.id).pipe(
+            switchMap(() => this.cycleService.getAll()),
+            catchError((err) => {
+              console.error('[cycle-list] failed to delete', err);
+              this.snackBar.open(DELETE_ERROR_MESSAGE, 'Cerrar', {
+                duration: 5000,
+                panelClass: 'snackbar-error',
+              });
+              return of(null);
+            }),
+            finalize(() => this.deletingId.set(null))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((cycles) => {
+        if (cycles === null) return;
+        const rows = cycles.map((cycle) => this.toRow(cycle));
+        this.rows.set(rows);
+        this.dataSource.data = rows;
+        this.snackBar.open(DELETE_SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
+      });
   }
 
   private showNotImplemented(): void {
