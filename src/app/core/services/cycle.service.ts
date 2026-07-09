@@ -20,4 +20,8 @@ export class CycleService {
   getCurrent(): Observable<CycleDto> {
     return this.current$;
   }
+
+  getAll(): Observable<CycleDto[]> {
+    return this.http.get<CycleDto[]>(this.baseUrl);
+  }
 }
