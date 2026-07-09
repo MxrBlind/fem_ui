@@ -18,7 +18,7 @@ import {
 } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { MatNativeDateModule } from '@angular/material/core';
+import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -75,6 +75,7 @@ export function toIsoDateString(date: Date): string {
     MatProgressSpinnerModule,
     MatSnackBarModule,
   ],
+  providers: [provideNativeDateAdapter()],
   templateUrl: './cycle-new.component.html',
   styleUrl: './cycle-new.component.scss',
 })
