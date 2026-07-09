@@ -14,12 +14,12 @@ import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
 import { CycleDeleteConfirmComponent } from '../cycle-delete-confirm/cycle-delete-confirm.component';
+import { CycleEditComponent } from '../cycle-edit/cycle-edit.component';
 import {
   CycleListComponent,
   DELETE_ERROR_MESSAGE,
   DELETE_SUCCESS_MESSAGE,
   LOAD_ERROR_MESSAGE,
-  NOT_IMPLEMENTED_MESSAGE,
   PRINCIPAL_FALLBACK,
 } from './cycle-list.component';
 
@@ -214,7 +214,7 @@ describe('CycleListComponent', () => {
 
   describe('error state', () => {
     it('clears loading, shows the error snackbar, and logs on API failure', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const { fixture, http, snackOpen } = setup(admin, { skipFlush: true });
       http
         .expectOne(`${environment.apiBaseUrl}/api/cycle`)
@@ -281,19 +281,52 @@ describe('CycleListComponent', () => {
     });
   });
 
-  describe('stub action handlers', () => {
-    it('onEdit opens the "Próximamente" snackbar and does not call the service', () => {
-      const { fixture, http, snackOpen } = setup(admin);
+  describe('onEdit opens the edit modal', () => {
+    it('opens CycleEditComponent with the row DTO and reloads on defined result', () => {
+      const { fixture, http } = setup(admin);
+      const dialog = (fixture.componentInstance as unknown as {
+        dialog: MatDialog;
+      }).dialog;
       const row = fixture.componentInstance.dataSource.data[0];
+      const updated: CycleDto = makeCycle(row.id, { description: 'edited' });
+      const dialogRef = {
+        afterClosed: () => of(updated),
+      } as unknown as MatDialogRef<unknown, CycleDto>;
+      const openSpy = vi.spyOn(dialog, 'open').mockReturnValue(dialogRef as never);
+
       fixture.componentInstance.onEdit(row);
-      expect(snackOpen).toHaveBeenCalledWith(
-        NOT_IMPLEMENTED_MESSAGE,
-        'Cerrar',
-        expect.objectContaining({ duration: 3000 })
+      expect(openSpy).toHaveBeenCalledWith(
+        CycleEditComponent,
+        expect.objectContaining({
+          width: '480px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+          data: { cycle: row.raw },
+        })
       );
-      http.expectNone(`${environment.apiBaseUrl}/api/cycle`);
+
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/cycle`)
+        .flush([updated]);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.rows().length).toBe(1);
+      expect(fixture.componentInstance.rows()[0].description).toBe('edited');
     });
 
+    it('does not reload when the edit dialog closes with undefined', () => {
+      const { fixture, http } = setup(admin);
+      const dialog = (fixture.componentInstance as unknown as {
+        dialog: MatDialog;
+      }).dialog;
+      const dialogRef = {
+        afterClosed: () => of(undefined),
+      } as unknown as MatDialogRef<unknown, CycleDto>;
+      vi.spyOn(dialog, 'open').mockReturnValue(dialogRef as never);
+
+      const row = fixture.componentInstance.dataSource.data[0];
+      fixture.componentInstance.onEdit(row);
+      http.expectNone(`${environment.apiBaseUrl}/api/cycle`);
+    });
   });
 
   describe('delete flow', () => {
@@ -388,7 +421,7 @@ describe('CycleListComponent', () => {
     });
 
     it('on DELETE error, keeps rows, shows error snackbar, logs, and resets deletingId', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
       const afterClosed$ = new Subject<boolean | undefined>();
       const openSpy = vi
         .spyOn(MatDialog.prototype, 'open')

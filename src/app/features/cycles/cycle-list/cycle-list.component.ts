@@ -29,11 +29,11 @@ import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
 import { CycleNewComponent } from '../cycle-new/cycle-new.component';
+import { CycleEditComponent } from '../cycle-edit/cycle-edit.component';
 import { CycleDeleteConfirmComponent } from '../cycle-delete-confirm/cycle-delete-confirm.component';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los ciclos. Intenta de nuevo más tarde.';
-export const NOT_IMPLEMENTED_MESSAGE = 'Próximamente';
 export const PRINCIPAL_FALLBACK = '—';
 export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
 export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
@@ -205,8 +205,24 @@ export class CycleListComponent implements OnInit, AfterViewInit {
   }
 
   onEdit(row: CycleRow): void {
-    console.debug('[cycle-list] onEdit not implemented yet', row.id);
-    this.showNotImplemented();
+    const ref = this.dialog.open<
+      CycleEditComponent,
+      { cycle: CycleDto },
+      CycleDto
+    >(CycleEditComponent, {
+      width: '480px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: { cycle: row.raw },
+    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated) => {
+        if (updated) {
+          this.reload();
+        }
+      });
   }
 
   onDelete(row: CycleRow): void {
@@ -248,10 +264,6 @@ export class CycleListComponent implements OnInit, AfterViewInit {
         this.dataSource.data = rows;
         this.snackBar.open(DELETE_SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
       });
-  }
-
-  private showNotImplemented(): void {
-    this.snackBar.open(NOT_IMPLEMENTED_MESSAGE, 'Cerrar', { duration: 3000 });
   }
 
   private toRow(cycle: CycleDto): CycleRow {

@@ -16,3 +16,11 @@ export interface CreateCycleRequest {
   endDate: string;
   principal: { id: number };
 }
+
+export interface UpdateCycleRequest {
+  description: string;
+  startDate: string;
+  endDate: string;
+  principal: { id: number };
+  current: boolean;
+}

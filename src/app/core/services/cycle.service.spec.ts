@@ -4,7 +4,11 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { CreateCycleRequest, CycleDto } from '../../features/enrollments/models/cycle.model';
+import {
+  CreateCycleRequest,
+  CycleDto,
+  UpdateCycleRequest,
+} from '../../features/enrollments/models/cycle.model';
 import { CycleService } from './cycle.service';
 
 describe('CycleService', () => {
@@ -113,6 +117,46 @@ describe('CycleService', () => {
     const promise = firstValueFrom(service.create(payload));
     http
       .expectOne(`${environment.apiBaseUrl}/api/cycle`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
+
+  it('update() issues PUT /api/cycle/{id} with the given payload and returns the updated CycleDto', async () => {
+    const payload: UpdateCycleRequest = {
+      description: '2027-A',
+      startDate: '2027-01-15',
+      endDate: '2027-06-15',
+      principal: { id: 42 },
+      current: true,
+    };
+    const updated: CycleDto = {
+      id: 7,
+      description: '2027-A',
+      startDate: '2027-01-15',
+      endDate: '2027-06-15',
+      current: true,
+      active: true,
+      principal: { id: 42, username: 'teacher' },
+    };
+    const promise = firstValueFrom(service.update(7, payload));
+    const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle/7`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(payload);
+    req.flush(updated);
+    await expect(promise).resolves.toEqual(updated);
+  });
+
+  it('update() surfaces HTTP errors via the observable error channel', async () => {
+    const payload: UpdateCycleRequest = {
+      description: '2027-A',
+      startDate: '2027-01-15',
+      endDate: '2027-06-15',
+      principal: { id: 42 },
+      current: false,
+    };
+    const promise = firstValueFrom(service.update(7, payload));
+    http
+      .expectOne(`${environment.apiBaseUrl}/api/cycle/7`)
       .flush('boom', { status: 500, statusText: 'Server Error' });
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
