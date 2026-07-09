@@ -4,8 +4,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { signal } from '@angular/core';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
+import { of } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
@@ -228,18 +230,54 @@ describe('CycleListComponent', () => {
     });
   });
 
-  describe('stub action handlers', () => {
-    it('onCreate opens the "Próximamente" snackbar and does not call the service', () => {
-      const { fixture, http, snackOpen } = setup(admin);
+  describe('onCreate opens the create modal', () => {
+    it('opens CycleNewComponent with the expected config and reloads on defined result', () => {
+      const { fixture, http } = setup(admin);
+      const dialog = (fixture.componentInstance as unknown as {
+        dialog: MatDialog;
+      }).dialog;
+      const created: CycleDto = makeCycle(1, { id: 99, description: 'newly-created' });
+      const dialogRef = {
+        afterClosed: () => of(created),
+      } as unknown as MatDialogRef<unknown, CycleDto>;
+      const openSpy = vi.spyOn(dialog, 'open').mockReturnValue(dialogRef as never);
+
       fixture.componentInstance.onCreate();
-      expect(snackOpen).toHaveBeenCalledWith(
-        NOT_IMPLEMENTED_MESSAGE,
-        'Cerrar',
-        expect.objectContaining({ duration: 3000 })
+      expect(openSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          width: '480px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+        })
       );
-      http.expectNone(`${environment.apiBaseUrl}/api/cycle`);
+
+      // The dialog is mocked, so no dialog open request is made. The reload
+      // triggers a second GET /api/cycle.
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/cycle`)
+        .flush([created]);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.rows().length).toBe(1);
+      expect(fixture.componentInstance.rows()[0].id).toBe(99);
     });
 
+    it('does not reload when the dialog closes with undefined', () => {
+      const { fixture, http } = setup(admin);
+      const dialog = (fixture.componentInstance as unknown as {
+        dialog: MatDialog;
+      }).dialog;
+      const dialogRef = {
+        afterClosed: () => of(undefined),
+      } as unknown as MatDialogRef<unknown, CycleDto>;
+      vi.spyOn(dialog, 'open').mockReturnValue(dialogRef as never);
+
+      fixture.componentInstance.onCreate();
+      http.expectNone(`${environment.apiBaseUrl}/api/cycle`);
+    });
+  });
+
+  describe('stub action handlers', () => {
     it('onEdit opens the "Próximamente" snackbar and does not call the service', () => {
       const { fixture, http, snackOpen } = setup(admin);
       const row = fixture.componentInstance.dataSource.data[0];

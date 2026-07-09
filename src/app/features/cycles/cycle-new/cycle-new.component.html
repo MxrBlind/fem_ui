@@ -1,0 +1,115 @@
+<h2 mat-dialog-title>Nuevo ciclo</h2>
+
+<mat-dialog-content class="cycle-new__content">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando datos del formulario" />
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="cycle-new__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Descripción</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="description"
+        maxlength="50"
+        autocomplete="off"
+      />
+      <mat-hint align="end">{{ form.controls.description.value.length }}/50</mat-hint>
+      @if (form.controls.description.touched && form.controls.description.hasError('required')) {
+        <mat-error>La descripción es requerida.</mat-error>
+      } @else if (form.controls.description.hasError('maxlength')) {
+        <mat-error>La descripción no puede exceder 50 caracteres.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Fecha de inicio</mat-label>
+      <input
+        matInput
+        formControlName="startDate"
+        [matDatepicker]="startPicker"
+        autocomplete="off"
+      />
+      <mat-datepicker-toggle
+        matSuffix
+        [for]="startPicker"
+        aria-label="Abrir selector de fecha de inicio"
+      />
+      <mat-datepicker #startPicker />
+      @if (form.controls.startDate.touched && form.controls.startDate.hasError('required')) {
+        <mat-error>La fecha de inicio es requerida.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Fecha de término</mat-label>
+      <input
+        matInput
+        formControlName="endDate"
+        [matDatepicker]="endPicker"
+        autocomplete="off"
+      />
+      <mat-datepicker-toggle
+        matSuffix
+        [for]="endPicker"
+        aria-label="Abrir selector de fecha de término"
+      />
+      <mat-datepicker #endPicker />
+      @if (form.controls.endDate.touched && form.controls.endDate.hasError('required')) {
+        <mat-error>La fecha de término es requerida.</mat-error>
+      } @else if (
+        form.controls.endDate.touched && form.hasError('endBeforeStart')
+      ) {
+        <mat-error>{{ endBeforeStartMessage }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Director</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [matAutocomplete]="principalAuto"
+        [value]="displayTeacherById(form.controls.principalId.value)"
+        (input)="onPrincipalInput(($any($event.target)).value)"
+        [disabled]="loading() || loadFailed()"
+      />
+      <mat-autocomplete
+        #principalAuto="matAutocomplete"
+        [displayWith]="displayTeacher"
+        (optionSelected)="onPrincipalSelected($event.option.value)"
+      >
+        @for (teacher of filteredTeachers(); track teacher.id) {
+          <mat-option [value]="teacher">{{ displayTeacher(teacher) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (form.controls.principalId.touched && form.controls.principalId.hasError('required')) {
+        <mat-error>Selecciona un director.</mat-error>
+      }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || saving() || loadFailed()"
+  >
+    @if (saving()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="18"
+        class="cycle-new__spinner"
+      />
+    }
+    Crear
+  </button>
+</mat-dialog-actions>

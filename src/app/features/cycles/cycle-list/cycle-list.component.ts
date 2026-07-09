@@ -13,6 +13,7 @@ import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -27,6 +28,7 @@ import { finalize } from 'rxjs';
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
+import { CycleNewComponent } from '../cycle-new/cycle-new.component';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los ciclos. Intenta de nuevo más tarde.';
@@ -51,6 +53,7 @@ export interface CycleRow {
     DatePipe,
     MatButtonModule,
     MatCardModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -69,6 +72,7 @@ export class CycleListComponent implements OnInit, AfterViewInit {
   private readonly cycleService = inject(CycleService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
   private readonly datePipe = new DatePipe('en-US');
 
   readonly displayedColumns = [
@@ -154,8 +158,46 @@ export class CycleListComponent implements OnInit, AfterViewInit {
   }
 
   onCreate(): void {
-    console.debug('[cycle-list] onCreate not implemented yet');
-    this.showNotImplemented();
+    const ref = this.dialog.open<CycleNewComponent, undefined, CycleDto>(
+      CycleNewComponent,
+      {
+        width: '480px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created) => {
+        if (created) {
+          this.reload();
+        }
+      });
+  }
+
+  private reload(): void {
+    this.loading.set(true);
+    this.cycleService
+      .getAll()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.loading.set(false))
+      )
+      .subscribe({
+        next: (cycles) => {
+          const rows = cycles.map((cycle) => this.toRow(cycle));
+          this.rows.set(rows);
+          this.dataSource.data = rows;
+        },
+        error: (err) => {
+          console.error('[cycle-list] failed to reload after create', err);
+          this.snackBar.open(LOAD_ERROR_MESSAGE, 'Cerrar', {
+            duration: 5000,
+            panelClass: 'snackbar-error',
+          });
+        },
+      });
   }
 
   onEdit(row: CycleRow): void {
