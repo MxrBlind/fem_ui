@@ -1,0 +1,150 @@
+<section class="cycle-list">
+  <header class="cycle-list__header">
+    <h2
+      class="cycle-list__title mat-headline-small"
+      data-testid="cycles-title"
+    >
+      Administrar ciclos
+    </h2>
+
+    <button
+      *hasRole="['admin']"
+      mat-flat-button
+      color="primary"
+      type="button"
+      data-testid="cycles-new-btn"
+      (click)="onCreate()"
+    >
+      <mat-icon>add</mat-icon>
+      Nuevo ciclo
+    </button>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando ciclos" />
+  }
+
+  <mat-card class="cycle-list__card">
+    <mat-form-field appearance="outline" class="cycle-list__filter">
+      <mat-label>Filtrar</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        data-testid="cycles-filter"
+        [value]="filterText()"
+        (input)="onFilterInput(($any($event.target)).value)"
+      />
+      @if (filterText().length > 0) {
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          aria-label="Limpiar filtro"
+          (click)="clearFilter()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    @if (!loading() && rows().length === 0) {
+      <div class="cycle-list__empty">
+        <mat-icon>inbox</mat-icon>
+        <p class="mat-body-large">No hay ciclos registrados.</p>
+      </div>
+    } @else {
+      <div class="cycle-list__table-wrapper">
+        <table
+          mat-table
+          matSort
+          [dataSource]="dataSource"
+          class="cycle-list__table"
+          data-testid="cycles-table"
+        >
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+            <td mat-cell *matCellDef="let row">{{ row.id }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Descripción</th>
+            <td mat-cell *matCellDef="let row">{{ row.description }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="startDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de inicio</th>
+            <td mat-cell *matCellDef="let row">{{ row.startDate | date:'mediumDate' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="endDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de fin</th>
+            <td mat-cell *matCellDef="let row">{{ row.endDate | date:'mediumDate' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="principalName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Director</th>
+            <td mat-cell *matCellDef="let row">{{ row.principalName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="current">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Ciclo actual</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="current-flag" [attr.aria-label]="row.current ? 'Sí' : 'No'">
+                @if (row.current) {
+                  <mat-icon>check</mat-icon>
+                } @else {
+                  <mat-icon>close</mat-icon>
+                }
+              </span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Acciones</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="row-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Editar ciclo"
+                  data-testid="cycle-edit-btn"
+                  [attr.aria-label]="'Editar ciclo ' + row.id"
+                  (click)="onEdit(row)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  type="button"
+                  matTooltip="Eliminar ciclo"
+                  data-testid="cycle-delete-btn"
+                  [attr.aria-label]="'Eliminar ciclo ' + row.id"
+                  (click)="onDelete(row)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            data-testid="cycle-row"
+          ></tr>
+        </table>
+
+        <mat-paginator
+          [pageSizeOptions]="[5, 10, 25, 50]"
+          [pageSize]="10"
+          showFirstLastButtons
+          aria-label="Paginación de ciclos"
+        />
+      </div>
+    }
+  </mat-card>
+</section>

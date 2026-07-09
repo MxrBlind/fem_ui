@@ -45,6 +45,40 @@ describe('CycleService', () => {
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
 
+  it('getAll() issues GET /api/cycle and returns the CycleDto array', async () => {
+    const cycles: CycleDto[] = [
+      {
+        id: 1,
+        description: '2026-I',
+        startDate: '2026-01-01T00:00:00Z',
+        endDate: '2026-06-30T00:00:00Z',
+        current: true,
+        active: true,
+      },
+      {
+        id: 2,
+        description: '2026-II',
+        startDate: '2026-07-01T00:00:00Z',
+        endDate: '2026-12-15T00:00:00Z',
+        current: false,
+        active: true,
+      },
+    ];
+    const promise = firstValueFrom(service.getAll());
+    const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle`);
+    expect(req.request.method).toBe('GET');
+    req.flush(cycles);
+    await expect(promise).resolves.toEqual(cycles);
+  });
+
+  it('getAll() surfaces HTTP errors via the observable error channel', async () => {
+    const promise = firstValueFrom(service.getAll());
+    http
+      .expectOne(`${environment.apiBaseUrl}/api/cycle`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
+
   it('shares a single request across multiple subscribers within the session', async () => {
     const cycle: CycleDto = {
       id: 1,
