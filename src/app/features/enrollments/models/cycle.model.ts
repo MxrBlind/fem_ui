@@ -9,3 +9,10 @@ export interface CycleDto {
   current?: boolean;
   active?: boolean;
 }
+
+export interface CreateCycleRequest {
+  description: string;
+  startDate: string;
+  endDate: string;
+  principal: { id: number };
+}

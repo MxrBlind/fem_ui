@@ -4,7 +4,7 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { CycleDto } from '../../features/enrollments/models/cycle.model';
+import { CreateCycleRequest, CycleDto } from '../../features/enrollments/models/cycle.model';
 import { CycleService } from './cycle.service';
 
 describe('CycleService', () => {
@@ -73,6 +73,44 @@ describe('CycleService', () => {
 
   it('getAll() surfaces HTTP errors via the observable error channel', async () => {
     const promise = firstValueFrom(service.getAll());
+    http
+      .expectOne(`${environment.apiBaseUrl}/api/cycle`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
+
+  it('create() issues POST /api/cycle with the given payload and returns the created CycleDto', async () => {
+    const payload: CreateCycleRequest = {
+      description: '2027-A',
+      startDate: '2027-01-15',
+      endDate: '2027-06-15',
+      principal: { id: 42 },
+    };
+    const created: CycleDto = {
+      id: 99,
+      description: '2027-A',
+      startDate: '2027-01-15',
+      endDate: '2027-06-15',
+      current: false,
+      active: true,
+      principal: { id: 42, username: 'teacher' },
+    };
+    const promise = firstValueFrom(service.create(payload));
+    const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(payload);
+    req.flush(created);
+    await expect(promise).resolves.toEqual(created);
+  });
+
+  it('create() surfaces HTTP errors via the observable error channel', async () => {
+    const payload: CreateCycleRequest = {
+      description: '2027-A',
+      startDate: '2027-01-15',
+      endDate: '2027-06-15',
+      principal: { id: 42 },
+    };
+    const promise = firstValueFrom(service.create(payload));
     http
       .expectOne(`${environment.apiBaseUrl}/api/cycle`)
       .flush('boom', { status: 500, statusText: 'Server Error' });
