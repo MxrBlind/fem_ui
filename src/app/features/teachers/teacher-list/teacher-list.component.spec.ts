@@ -8,11 +8,14 @@ import { By } from '@angular/platform-browser';
 
 import { environment } from '../../../../environments/environment';
 import { UserDto } from '@core/models/auth.model';
+import { MatDialog } from '@angular/material/dialog';
+import { Subject } from 'rxjs';
 import {
   LOAD_ERROR_MESSAGE,
   TEACHER_FALLBACK,
   TeacherListComponent,
 } from './teacher-list.component';
+import { TeacherNewComponent } from '../teacher-new/teacher-new.component';
 
 const USERS_URL = `${environment.apiBaseUrl}/api/user`;
 
@@ -260,15 +263,74 @@ describe('TeacherListComponent', () => {
     });
   });
 
-  describe('placeholder actions', () => {
-    it('Nuevo maestro click is a no-op (no HTTP)', () => {
-      const { fixture, http } = setup();
+  describe('Nuevo maestro dialog wiring', () => {
+    function setupWithDialogMock(afterClosed$: Subject<UserDto | undefined>): {
+      fixture: ComponentFixture<TeacherListComponent>;
+      http: HttpTestingController;
+      openSpy: ReturnType<typeof vi.spyOn>;
+    } {
+      TestBed.configureTestingModule({
+        imports: [TeacherListComponent],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+        ],
+      });
+      vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => afterClosed$.asObservable(),
+        } as never);
+
+      const fixture = TestBed.createComponent(TeacherListComponent);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http
+        .expectOne((r) => r.method === 'GET' && r.url === USERS_URL)
+        .flush([makeTeacher(1)]);
+      fixture.detectChanges();
+      return { fixture, http, openSpy };
+    }
+
+    it('clicking Nuevo maestro opens TeacherNewComponent with the expected config', () => {
+      const closed$ = new Subject<UserDto | undefined>();
+      const { fixture, openSpy } = setupWithDialogMock(closed$);
       const btn = fixture.debugElement.query(By.css('[data-testid="teachers-new-btn"]'));
       (btn.nativeElement as HTMLButtonElement).click();
-      fixture.detectChanges();
-      http.expectNone((r) => r.url === USERS_URL);
+      expect(openSpy).toHaveBeenCalledWith(TeacherNewComponent, {
+        width: '560px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      });
     });
 
+    it('reloads the list when afterClosed emits a UserDto', () => {
+      const closed$ = new Subject<UserDto | undefined>();
+      const { fixture, http } = setupWithDialogMock(closed$);
+      fixture.componentInstance.onCreate();
+
+      closed$.next({ id: 42, username: 'new' });
+      const req = http.expectOne(
+        (r) => r.method === 'GET' && r.url === USERS_URL
+      );
+      req.flush([makeTeacher(1), makeTeacher(42, { username: 'new' })]);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.rows().length).toBe(2);
+    });
+
+    it('does not reload when afterClosed emits undefined', () => {
+      const closed$ = new Subject<UserDto | undefined>();
+      const { fixture, http } = setupWithDialogMock(closed$);
+      fixture.componentInstance.onCreate();
+      closed$.next(undefined);
+      http.expectNone((r) => r.url === USERS_URL);
+      expect(fixture.componentInstance.rows().length).toBe(1);
+    });
+  });
+
+  describe('row actions', () => {
     it('edit and delete buttons render per row and are no-ops', () => {
       const { fixture, http } = setup();
       const edits = fixture.debugElement.queryAll(By.css('[data-testid="teacher-edit-btn"]'));

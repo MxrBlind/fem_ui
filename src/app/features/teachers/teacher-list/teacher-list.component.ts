@@ -12,6 +12,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -25,6 +26,7 @@ import { finalize } from 'rxjs';
 
 import { UserDto } from '@core/models/auth.model';
 import { TeacherService } from '@core/services/teacher.service';
+import { TeacherNewComponent } from '../teacher-new/teacher-new.component';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los maestros. Intenta de nuevo más tarde.';
@@ -48,6 +50,7 @@ export interface TeacherRow {
   imports: [
     MatButtonModule,
     MatCardModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -65,6 +68,7 @@ export class TeacherListComponent implements OnInit, AfterViewInit {
   private readonly teacherService = inject(TeacherService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   readonly displayedColumns = [
     'id',
@@ -151,7 +155,46 @@ export class TeacherListComponent implements OnInit, AfterViewInit {
   }
 
   onCreate(): void {
-    // TODO(FEM-*): open teacher-new dialog in a follow-up ticket.
+    const ref = this.dialog.open<TeacherNewComponent, undefined, UserDto>(
+      TeacherNewComponent,
+      {
+        width: '560px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created) => {
+        if (created) {
+          this.reload();
+        }
+      });
+  }
+
+  private reload(): void {
+    this.loading.set(true);
+    this.teacherService
+      .getAll()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.loading.set(false))
+      )
+      .subscribe({
+        next: (users) => {
+          const rows = users.map((u) => this.toRow(u));
+          this.rows.set(rows);
+          this.dataSource.data = rows;
+        },
+        error: (err) => {
+          console.error('[teacher-list] failed to reload after create', err);
+          this.snackBar.open(LOAD_ERROR_MESSAGE, 'Cerrar', {
+            duration: 5000,
+            panelClass: 'snackbar-error',
+          });
+        },
+      });
   }
 
   onEdit(_row: TeacherRow): void {
