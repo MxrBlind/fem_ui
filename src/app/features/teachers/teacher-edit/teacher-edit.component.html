@@ -1,0 +1,142 @@
+<h2 mat-dialog-title>Editar maestro</h2>
+
+<mat-dialog-content class="teacher-edit__content">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="teacher-edit__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Username</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="username"
+        readonly
+        autocomplete="off"
+      />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Password (<strong>Vacío para no cambiarlo</strong>)</mat-label>
+      <input
+        matInput
+        type="password"
+        formControlName="password"
+        maxlength="20"
+        autocomplete="new-password"
+      />
+      @if (form.controls.password.touched && form.controls.password.hasError('minlength')) {
+        <mat-error>El password debe tener al menos 8 caracteres.</mat-error>
+      } @else if (form.controls.password.touched && form.controls.password.hasError('maxlength')) {
+        <mat-error>El password no puede exceder 20 caracteres.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Nombre(s)</mat-label>
+      <input matInput type="text" formControlName="name" autocomplete="off" />
+      @if (form.controls.name.touched && form.controls.name.hasError('required')) {
+        <mat-error>El nombre es requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Apellido paterno</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="parentLastName"
+        autocomplete="off"
+      />
+      @if (form.controls.parentLastName.touched && form.controls.parentLastName.hasError('required')) {
+        <mat-error>El apellido paterno es requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Apellido materno</mat-label>
+      <input
+        matInput
+        type="text"
+        formControlName="motherLastName"
+        autocomplete="off"
+      />
+      @if (form.controls.motherLastName.touched && form.controls.motherLastName.hasError('required')) {
+        <mat-error>El apellido materno es requerido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Fecha de nacimiento</mat-label>
+      <input
+        matInput
+        formControlName="birthDate"
+        [matDatepicker]="birthPicker"
+        autocomplete="off"
+      />
+      <mat-datepicker-toggle
+        matSuffix
+        [for]="birthPicker"
+        aria-label="Abrir selector de fecha de nacimiento"
+      />
+      <mat-datepicker #birthPicker />
+      @if (form.controls.birthDate.touched && form.controls.birthDate.hasError('required')) {
+        <mat-error>La fecha de nacimiento es requerida.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Dirección</mat-label>
+      <input matInput type="text" formControlName="address" autocomplete="off" />
+      @if (form.controls.address.touched && form.controls.address.hasError('required')) {
+        <mat-error>La dirección es requerida.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Iglesia</mat-label>
+      <input matInput type="text" formControlName="church" autocomplete="off" />
+      @if (form.controls.church.touched && form.controls.church.hasError('required')) {
+        <mat-error>La iglesia es requerida.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Email</mat-label>
+      <input matInput type="text" formControlName="email" autocomplete="off" />
+      @if (form.controls.email.touched && form.controls.email.hasError('required')) {
+        <mat-error>El email es requerido.</mat-error>
+      } @else if (form.controls.email.touched && form.controls.email.hasError('email')) {
+        <mat-error>El email no tiene un formato válido.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Teléfono</mat-label>
+      <input matInput type="text" formControlName="phone" autocomplete="off" />
+      @if (form.controls.phone.touched && form.controls.phone.hasError('required')) {
+        <mat-error>El teléfono es requerido.</mat-error>
+      }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="onCancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    data-testid="teacher-edit-submit"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || saving()"
+  >
+    @if (saving()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="18"
+        class="teacher-edit__spinner"
+      />
+    }
+    Actualizar
+  </button>
+</mat-dialog-actions>

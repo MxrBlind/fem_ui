@@ -15,6 +15,7 @@ import {
   TEACHER_FALLBACK,
   TeacherListComponent,
 } from './teacher-list.component';
+import { TeacherEditComponent } from '../teacher-edit/teacher-edit.component';
 import { TeacherNewComponent } from '../teacher-new/teacher-new.component';
 
 const USERS_URL = `${environment.apiBaseUrl}/api/user`;
@@ -331,15 +332,87 @@ describe('TeacherListComponent', () => {
   });
 
   describe('row actions', () => {
-    it('edit and delete buttons render per row and are no-ops', () => {
+    it('edit and delete buttons render per row; delete is a no-op', () => {
       const { fixture, http } = setup();
       const edits = fixture.debugElement.queryAll(By.css('[data-testid="teacher-edit-btn"]'));
       const deletes = fixture.debugElement.queryAll(By.css('[data-testid="teacher-delete-btn"]'));
       expect(edits.length).toBe(3);
       expect(deletes.length).toBe(3);
-      (edits[0].nativeElement as HTMLButtonElement).click();
       (deletes[0].nativeElement as HTMLButtonElement).click();
       fixture.detectChanges();
+      http.expectNone((r) => r.url === USERS_URL);
+    });
+
+    it('clicking edit opens TeacherEditComponent with { user: row.raw }', () => {
+      TestBed.configureTestingModule({
+        imports: [TeacherListComponent],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+        ],
+      });
+      vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
+      const closed$ = new Subject<UserDto | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => closed$.asObservable(),
+        } as never);
+
+      const fixture = TestBed.createComponent(TeacherListComponent);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      const teacher = makeTeacher(11);
+      http
+        .expectOne((r) => r.method === 'GET' && r.url === USERS_URL)
+        .flush([teacher]);
+      fixture.detectChanges();
+
+      const editBtn = fixture.debugElement.query(
+        By.css('[data-testid="teacher-edit-btn"]')
+      );
+      (editBtn.nativeElement as HTMLButtonElement).click();
+
+      expect(openSpy).toHaveBeenCalledWith(TeacherEditComponent, {
+        width: '560px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+        data: { user: teacher },
+      });
+
+      closed$.next({ id: 11, username: 't11' });
+      const reload = http.expectOne(
+        (r) => r.method === 'GET' && r.url === USERS_URL
+      );
+      reload.flush([teacher]);
+    });
+
+    it('does not reload when the edit dialog closes with undefined', () => {
+      TestBed.configureTestingModule({
+        imports: [TeacherListComponent],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+        ],
+      });
+      vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
+      const closed$ = new Subject<UserDto | undefined>();
+      vi.spyOn(MatDialog.prototype, 'open').mockReturnValue({
+        afterClosed: () => closed$.asObservable(),
+      } as never);
+
+      const fixture = TestBed.createComponent(TeacherListComponent);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http
+        .expectOne((r) => r.method === 'GET' && r.url === USERS_URL)
+        .flush([makeTeacher(1)]);
+      fixture.detectChanges();
+
+      fixture.componentInstance.onEdit(fixture.componentInstance.rows()[0]);
+      closed$.next(undefined);
       http.expectNone((r) => r.url === USERS_URL);
     });
 

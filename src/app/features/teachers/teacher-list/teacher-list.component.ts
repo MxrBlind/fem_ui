@@ -26,6 +26,10 @@ import { finalize } from 'rxjs';
 
 import { UserDto } from '@core/models/auth.model';
 import { TeacherService } from '@core/services/teacher.service';
+import {
+  TeacherEditComponent,
+  TeacherEditDialogData,
+} from '../teacher-edit/teacher-edit.component';
 import { TeacherNewComponent } from '../teacher-new/teacher-new.component';
 
 export const LOAD_ERROR_MESSAGE =
@@ -197,8 +201,25 @@ export class TeacherListComponent implements OnInit, AfterViewInit {
       });
   }
 
-  onEdit(_row: TeacherRow): void {
-    // TODO(FEM-*): open teacher-edit dialog in a follow-up ticket.
+  onEdit(row: TeacherRow): void {
+    const ref = this.dialog.open<
+      TeacherEditComponent,
+      TeacherEditDialogData,
+      UserDto
+    >(TeacherEditComponent, {
+      width: '560px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: { user: row.raw },
+    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated) => {
+        if (updated) {
+          this.reload();
+        }
+      });
   }
 
   onDelete(_row: TeacherRow): void {
