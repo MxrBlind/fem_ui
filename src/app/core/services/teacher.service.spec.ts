@@ -71,4 +71,41 @@ describe('TeacherService', () => {
 
     expect(received).toEqual(updated);
   });
+
+  it('issues DELETE /api/user/:id and completes with no body', () => {
+    let completed = false;
+    let emitted = false;
+    service.delete(9).subscribe({
+      next: () => (emitted = true),
+      complete: () => (completed = true),
+    });
+
+    const req = http.expectOne(
+      (r) =>
+        r.method === 'DELETE' && r.url === `${environment.apiBaseUrl}/api/user/9`
+    );
+    expect(req.request.body).toBeNull();
+    req.flush(null, { status: 204, statusText: 'No Content' });
+
+    expect(emitted).toBe(true);
+    expect(completed).toBe(true);
+  });
+
+  it('propagates HTTP errors from delete', () => {
+    let errorStatus: number | undefined;
+    service.delete(3).subscribe({
+      next: () => undefined,
+      error: (err: { status: number }) => (errorStatus = err.status),
+    });
+
+    http
+      .expectOne(
+        (r) =>
+          r.method === 'DELETE' &&
+          r.url === `${environment.apiBaseUrl}/api/user/3`
+      )
+      .flush(null, { status: 500, statusText: 'Server Error' });
+
+    expect(errorStatus).toBe(500);
+  });
 });

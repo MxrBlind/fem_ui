@@ -22,8 +22,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { finalize } from 'rxjs';
+import { catchError, filter, finalize, of, switchMap } from 'rxjs';
 
+import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { UserDto } from '@core/models/auth.model';
 import { TeacherService } from '@core/services/teacher.service';
 import {
@@ -31,9 +32,15 @@ import {
   TeacherEditDialogData,
 } from '../teacher-edit/teacher-edit.component';
 import { TeacherNewComponent } from '../teacher-new/teacher-new.component';
+import {
+  TeacherDeleteConfirmComponent,
+  TeacherDeleteConfirmData,
+} from '../teacher-delete-confirm/teacher-delete-confirm.component';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los maestros. Intenta de nuevo más tarde.';
+export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
+export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
 export const TEACHER_FALLBACK = '—';
 
 export interface TeacherRow {
@@ -52,6 +59,7 @@ export interface TeacherRow {
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    HasRoleDirective,
     MatButtonModule,
     MatCardModule,
     MatDialogModule,
@@ -88,6 +96,7 @@ export class TeacherListComponent implements OnInit, AfterViewInit {
   readonly rows = signal<TeacherRow[]>([]);
   readonly loading = signal(true);
   readonly filterText = signal('');
+  readonly deletingId = signal<number | null>(null);
 
   readonly dataSource = new MatTableDataSource<TeacherRow>([]);
 
@@ -222,8 +231,46 @@ export class TeacherListComponent implements OnInit, AfterViewInit {
       });
   }
 
-  onDelete(_row: TeacherRow): void {
-    // TODO(FEM-*): open teacher-delete-confirm dialog in a follow-up ticket.
+  onDelete(row: TeacherRow): void {
+    const ref = this.dialog.open<
+      TeacherDeleteConfirmComponent,
+      TeacherDeleteConfirmData,
+      boolean
+    >(TeacherDeleteConfirmComponent, {
+      width: '420px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: { row },
+    });
+
+    ref
+      .afterClosed()
+      .pipe(
+        filter((confirmed): confirmed is true => confirmed === true),
+        switchMap(() => {
+          this.deletingId.set(row.id);
+          return this.teacherService.delete(row.id).pipe(
+            switchMap(() => this.teacherService.getAll()),
+            catchError((err) => {
+              console.error('[teacher-list] failed to delete', err);
+              this.snackBar.open(DELETE_ERROR_MESSAGE, 'Cerrar', {
+                duration: 5000,
+                panelClass: 'snackbar-error',
+              });
+              return of(null);
+            }),
+            finalize(() => this.deletingId.set(null))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((users) => {
+        if (users === null) return;
+        const rows = users.map((u) => this.toRow(u));
+        this.rows.set(rows);
+        this.dataSource.data = rows;
+        this.snackBar.open(DELETE_SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
+      });
   }
 
   private toRow(user: UserDto): TeacherRow {

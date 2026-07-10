@@ -3,22 +3,31 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { signal } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 
 import { environment } from '../../../../environments/environment';
+import { AuthService } from '@core/services/auth.service';
+import { AuthUser } from '@core/auth/rbac';
 import { UserDto } from '@core/models/auth.model';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import {
+  DELETE_ERROR_MESSAGE,
+  DELETE_SUCCESS_MESSAGE,
   LOAD_ERROR_MESSAGE,
   TEACHER_FALLBACK,
   TeacherListComponent,
 } from './teacher-list.component';
+import { TeacherDeleteConfirmComponent } from '../teacher-delete-confirm/teacher-delete-confirm.component';
 import { TeacherEditComponent } from '../teacher-edit/teacher-edit.component';
 import { TeacherNewComponent } from '../teacher-new/teacher-new.component';
 
 const USERS_URL = `${environment.apiBaseUrl}/api/user`;
+
+const admin: AuthUser = { id: 1, username: 'admin', role: 'admin', rawRole: 'admin' };
+const teacher: AuthUser = { id: 2, username: 'teacher', role: 'teacher', rawRole: 'teacher' };
 
 function makeTeacher(id: number, overrides: Partial<UserDto> = {}): UserDto {
   return {
@@ -42,13 +51,19 @@ interface Harness {
   snackOpen: ReturnType<typeof vi.spyOn>;
 }
 
-function setup(options: { skipFlush?: boolean; teachers?: UserDto[] } = {}): Harness {
+function setup(
+  options: { skipFlush?: boolean; teachers?: UserDto[]; user?: AuthUser } = {}
+): Harness {
+  const currentUser = signal<AuthUser | null>(options.user ?? admin);
+  const fakeAuth = { currentUser: currentUser.asReadonly() } as unknown as AuthService;
+
   TestBed.configureTestingModule({
     imports: [TeacherListComponent],
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
       provideAnimationsAsync(),
+      { provide: AuthService, useValue: fakeAuth },
     ],
   });
 
@@ -270,12 +285,15 @@ describe('TeacherListComponent', () => {
       http: HttpTestingController;
       openSpy: ReturnType<typeof vi.spyOn>;
     } {
+      const currentUser = signal<AuthUser | null>(admin);
+      const fakeAuth = { currentUser: currentUser.asReadonly() } as unknown as AuthService;
       TestBed.configureTestingModule({
         imports: [TeacherListComponent],
         providers: [
           provideHttpClient(),
           provideHttpClientTesting(),
           provideAnimationsAsync(),
+          { provide: AuthService, useValue: fakeAuth },
         ],
       });
       vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
@@ -332,24 +350,24 @@ describe('TeacherListComponent', () => {
   });
 
   describe('row actions', () => {
-    it('edit and delete buttons render per row; delete is a no-op', () => {
-      const { fixture, http } = setup();
+    it('edit and delete buttons render per row for admin users', () => {
+      const { fixture } = setup();
       const edits = fixture.debugElement.queryAll(By.css('[data-testid="teacher-edit-btn"]'));
       const deletes = fixture.debugElement.queryAll(By.css('[data-testid="teacher-delete-btn"]'));
       expect(edits.length).toBe(3);
       expect(deletes.length).toBe(3);
-      (deletes[0].nativeElement as HTMLButtonElement).click();
-      fixture.detectChanges();
-      http.expectNone((r) => r.url === USERS_URL);
     });
 
     it('clicking edit opens TeacherEditComponent with { user: row.raw }', () => {
+      const currentUser = signal<AuthUser | null>(admin);
+      const fakeAuth = { currentUser: currentUser.asReadonly() } as unknown as AuthService;
       TestBed.configureTestingModule({
         imports: [TeacherListComponent],
         providers: [
           provideHttpClient(),
           provideHttpClientTesting(),
           provideAnimationsAsync(),
+          { provide: AuthService, useValue: fakeAuth },
         ],
       });
       vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
@@ -389,12 +407,15 @@ describe('TeacherListComponent', () => {
     });
 
     it('does not reload when the edit dialog closes with undefined', () => {
+      const currentUser = signal<AuthUser | null>(admin);
+      const fakeAuth = { currentUser: currentUser.asReadonly() } as unknown as AuthService;
       TestBed.configureTestingModule({
         imports: [TeacherListComponent],
         providers: [
           provideHttpClient(),
           provideHttpClientTesting(),
           provideAnimationsAsync(),
+          { provide: AuthService, useValue: fakeAuth },
         ],
       });
       vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
@@ -424,6 +445,137 @@ describe('TeacherListComponent', () => {
         .nativeElement as HTMLElement;
       expect(edit.getAttribute('aria-label')).toBe('Editar maestro 42');
       expect(del.getAttribute('aria-label')).toBe('Eliminar maestro 42');
+    });
+  });
+
+  describe('delete flow', () => {
+    it('delete button is hidden for non-admin users', () => {
+      const { fixture } = setup({ user: teacher });
+      const buttons = fixture.debugElement.queryAll(
+        By.css('button[data-testid="teacher-delete-btn"]')
+      );
+      expect(buttons.length).toBe(0);
+    });
+
+    it('delete button is visible for admins on every row', () => {
+      const { fixture } = setup();
+      const buttons = fixture.debugElement.queryAll(
+        By.css('button[data-testid="teacher-delete-btn"]')
+      );
+      expect(buttons.length).toBe(3);
+    });
+
+    it('onDelete opens TeacherDeleteConfirmComponent with the expected config and data', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture } = setup();
+
+      const row = fixture.componentInstance.rows()[0];
+      fixture.componentInstance.onDelete(row);
+
+      expect(openSpy).toHaveBeenCalledWith(
+        TeacherDeleteConfirmComponent,
+        expect.objectContaining({
+          width: '420px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+          data: { row },
+        })
+      );
+      afterClosed$.complete();
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=false, does not call delete and rows are unchanged', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup();
+      const before = fixture.componentInstance.dataSource.data;
+      const callsBefore = snackOpen.mock.calls.length;
+
+      const row = before[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(false);
+      afterClosed$.complete();
+
+      http.expectNone(`${USERS_URL}/${row.id}`);
+      http.expectNone((r) => r.method === 'GET' && r.url === USERS_URL);
+      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(snackOpen.mock.calls.length).toBe(callsBefore);
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=true and success, deletes, reloads list, and shows success snackbar', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup();
+
+      const row = fixture.componentInstance.rows()[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      const delReq = http.expectOne(`${USERS_URL}/${row.id}`);
+      expect(delReq.request.method).toBe('DELETE');
+      delReq.flush(null, { status: 204, statusText: 'No Content' });
+
+      http
+        .expectOne(
+          (r) =>
+            r.method === 'GET' &&
+            r.url === USERS_URL &&
+            r.params.get('role') === 'ROLE_TEACHER'
+        )
+        .flush([makeTeacher(2), makeTeacher(3)]);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.rows().length).toBe(2);
+      expect(fixture.componentInstance.rows().some((r) => r.id === row.id)).toBe(false);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_SUCCESS_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 3000 })
+      );
+      openSpy.mockRestore();
+    });
+
+    it('on DELETE error, keeps rows, shows error snackbar, logs, and resets deletingId', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup();
+
+      const row = fixture.componentInstance.rows()[0];
+      const before = fixture.componentInstance.dataSource.data;
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      http
+        .expectOne(`${USERS_URL}/${row.id}`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      http.expectNone((r) => r.method === 'GET' && r.url === USERS_URL);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_ERROR_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 5000, panelClass: 'snackbar-error' })
+      );
+      expect(errorSpy).toHaveBeenCalledWith('[teacher-list] failed to delete', expect.anything());
+      errorSpy.mockRestore();
+      openSpy.mockRestore();
     });
   });
 });
