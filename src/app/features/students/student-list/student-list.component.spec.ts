@@ -16,6 +16,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { UserDto } from '@core/models/auth.model';
+import { StudentEditComponent } from '../student-edit/student-edit.component';
 import { StudentNewComponent } from '../student-new/student-new.component';
 import {
   LOAD_ERROR_MESSAGE,
@@ -395,16 +396,74 @@ describe('StudentListComponent', () => {
       openSpy.mockRestore();
     });
 
-    it('clicking edit is a no-op (no HTTP, rows unchanged)', () => {
-      const { fixture, http } = setup();
-      const before = fixture.componentInstance.dataSource.data;
+    it('clicking edit opens the StudentEditComponent dialog with the row user', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => of(undefined),
+        } as unknown as MatDialogRef<StudentEditComponent, UserDto>);
+      const { fixture } = setup({ students: [makeStudent(1)] });
       const editBtn = fixture.debugElement.query(
         By.css('[data-testid="student-edit-btn"]')
       );
       (editBtn.nativeElement as HTMLButtonElement).click();
       fixture.detectChanges();
+      expect(openSpy).toHaveBeenCalledWith(
+        StudentEditComponent,
+        expect.objectContaining({
+          width: '560px',
+          data: expect.objectContaining({
+            user: expect.objectContaining({ id: 1 }),
+          }),
+        })
+      );
+      openSpy.mockRestore();
+    });
+
+    it('replaces the row in place when the edit dialog resolves with an updated user', () => {
+      const updated: UserDto = makeStudent(1, {
+        profile: {
+          name: 'Updated',
+          parentLastName: 'Paterno1',
+          motherLastName: 'Materno1',
+          email: 's1@example.com',
+          phone: '555000001',
+          church: 'Church1',
+        },
+      });
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => of(updated),
+        } as unknown as MatDialogRef<StudentEditComponent, UserDto>);
+      const { fixture, http } = setup();
+
+      const target = fixture.componentInstance.rows().find((r) => r.id === 1)!;
+      fixture.componentInstance.onEdit(target);
+      fixture.detectChanges();
+
+      const rows = fixture.componentInstance.rows();
+      expect(rows.length).toBe(3);
+      expect(rows.find((r) => r.id === 1)?.name).toBe('Updated');
+      expect(fixture.componentInstance.dataSource.data.find((r) => r.id === 1)?.name).toBe('Updated');
       http.expectNone((r) => r.url === USERS_URL);
-      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      openSpy.mockRestore();
+    });
+
+    it('leaves the list untouched when the edit dialog resolves with undefined', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => of(undefined),
+        } as unknown as MatDialogRef<StudentEditComponent, UserDto>);
+      const { fixture, http } = setup();
+      const before = fixture.componentInstance.rows();
+      const target = before[0];
+      fixture.componentInstance.onEdit(target);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.rows()).toBe(before);
+      http.expectNone((r) => r.url === USERS_URL);
+      openSpy.mockRestore();
     });
 
     it('clicking delete is a no-op (no HTTP, rows unchanged)', () => {
