@@ -8,6 +8,7 @@ import {
 import { environment } from '../../../environments/environment';
 import { UserDto } from '../models/auth.model';
 import { CreateStudentRequest } from '@features/students/models/create-student.request';
+import { UpdateStudentRequest } from '@features/students/models/update-student.request';
 import { StudentService } from './student.service';
 
 describe('StudentService', () => {
@@ -44,11 +45,11 @@ describe('StudentService', () => {
     expect(received).toEqual(students);
   });
 
-  it('exposes getAll and create only (no update/delete methods)', () => {
+  it('exposes getAll, create, and update (no delete method)', () => {
     const svc = service as unknown as Record<string, unknown>;
     expect(typeof svc['getAll']).toBe('function');
     expect(typeof svc['create']).toBe('function');
-    expect(svc['update']).toBeUndefined();
+    expect(typeof svc['update']).toBe('function');
     expect(svc['delete']).toBeUndefined();
   });
 
@@ -89,6 +90,48 @@ describe('StudentService', () => {
       });
       http
         .expectOne(`${environment.apiBaseUrl}/api/user`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      expect(errorStatus).toBe(500);
+    });
+  });
+
+  describe('update', () => {
+    const payload: UpdateStudentRequest = {
+      username: 'jdoe',
+      password: 'secret12',
+      role: { id: 3 },
+      profile: {
+        name: 'Juan',
+        parentLastName: 'Doe',
+        motherLastName: 'Smith',
+        birthDate: '1969-05-31T00:00:00.000+00:00',
+        address: 'Calle 1',
+        church: 'Central',
+        email: 'jdoe@example.com',
+        phone: '5551234567',
+      },
+    };
+
+    it('PUTs to /api/user/{id} with the exact payload and forwards the response', () => {
+      const updated: UserDto = { id: 42, username: 'jdoe' };
+      let received: UserDto | undefined;
+      service.update(42, payload).subscribe((v) => (received = v));
+
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/user/42`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual(payload);
+      req.flush(updated);
+
+      expect(received).toEqual(updated);
+    });
+
+    it('propagates non-2xx as an HttpErrorResponse', () => {
+      let errorStatus: number | undefined;
+      service.update(42, payload).subscribe({
+        error: (err: { status?: number }) => (errorStatus = err.status),
+      });
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/user/42`)
         .flush('boom', { status: 500, statusText: 'Server Error' });
       expect(errorStatus).toBe(500);
     });

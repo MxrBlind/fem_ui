@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
 import { UserDto } from '@core/models/auth.model';
 import { CreateStudentRequest } from '@features/students/models/create-student.request';
+import { UpdateStudentRequest } from '@features/students/models/update-student.request';
 
 @Injectable({ providedIn: 'root' })
 export class StudentService {
@@ -19,5 +20,9 @@ export class StudentService {
 
   create(payload: CreateStudentRequest): Observable<UserDto> {
     return this.http.post<UserDto>(this.baseUrl, payload);
+  }
+
+  update(id: number, payload: UpdateStudentRequest): Observable<UserDto> {
+    return this.http.put<UserDto>(`${this.baseUrl}/${id}`, payload);
   }
 }

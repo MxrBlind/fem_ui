@@ -27,6 +27,7 @@ import { finalize } from 'rxjs';
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { UserDto } from '@core/models/auth.model';
 import { StudentService } from '@core/services/student.service';
+import { StudentEditComponent } from '../student-edit/student-edit.component';
 import { StudentNewComponent } from '../student-new/student-new.component';
 
 export const LOAD_ERROR_MESSAGE =
@@ -176,8 +177,27 @@ export class StudentListComponent implements OnInit, AfterViewInit {
       });
   }
 
-  onEdit(_row: StudentRow): void {
-    // TODO(FEM-*): open student-edit dialog once the update-student ticket lands.
+  onEdit(row: StudentRow): void {
+    const ref = this.dialog.open<StudentEditComponent, { user: UserDto }, UserDto>(
+      StudentEditComponent,
+      {
+        data: { user: row.raw },
+        width: '560px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated) => {
+        if (!updated) return;
+        const nextRow = this.toRow(updated);
+        this.rows.update((rows) =>
+          rows.map((r) => (r.id === nextRow.id ? nextRow : r))
+        );
+        this.dataSource.data = this.rows();
+      });
   }
 
   onDelete(_row: StudentRow): void {
