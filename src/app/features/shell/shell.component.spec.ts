@@ -176,6 +176,16 @@ describe('ShellComponent', () => {
       expect(maestros!.getAttribute('href')).toBe('/teachers');
     });
 
+    it('1.13e "Estudiantes" links to /students with routerLinkActive', () => {
+      const fixture = setup(admin);
+      const links = Array.from(qAll(fixture, 'a[mat-list-item]')) as HTMLAnchorElement[];
+      const estudiantes = links.find((el) =>
+        (el.textContent ?? '').trim().includes('Estudiantes')
+      );
+      expect(estudiantes).toBeTruthy();
+      expect(estudiantes!.getAttribute('href')).toBe('/students');
+    });
+
     it('1.13b absent for teacher', () => {
       const fixture = setup(teacher);
       expect(textVisible(fixture, 'Catálogos')).toBe(false);
