@@ -42,4 +42,33 @@ describe('TeacherService', () => {
 
     expect(received).toEqual(teachers);
   });
+
+  it('issues PUT /api/user/:id with the given payload on update', () => {
+    const payload = {
+      username: 'jdoe',
+      profile: {
+        name: 'Juan',
+        parentLastName: 'Doe',
+        motherLastName: 'Smith',
+        birthDate: '1969-05-31T00:00:00.000+00:00',
+        address: 'Calle 1',
+        church: 'Central',
+        email: 'jdoe@example.com',
+        phone: '5551234567',
+      },
+    };
+    const updated: UserDto = { id: 7, username: 'jdoe' };
+
+    let received: UserDto | undefined;
+    service.update(7, payload).subscribe((v) => (received = v));
+
+    const req = http.expectOne(
+      (r) =>
+        r.method === 'PUT' && r.url === `${environment.apiBaseUrl}/api/user/7`
+    );
+    expect(req.request.body).toEqual(payload);
+    req.flush(updated);
+
+    expect(received).toEqual(updated);
+  });
 });
