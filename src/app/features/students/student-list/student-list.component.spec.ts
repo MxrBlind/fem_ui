@@ -6,7 +6,9 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { of } from 'rxjs';
 import { signal } from '@angular/core';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 
@@ -14,6 +16,7 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { UserDto } from '@core/models/auth.model';
+import { StudentNewComponent } from '../student-new/student-new.component';
 import {
   LOAD_ERROR_MESSAGE,
   STUDENT_FALLBACK,
@@ -330,16 +333,66 @@ describe('StudentListComponent', () => {
       expect(buttons.length).toBe(0);
     });
 
-    it('clicking "Nuevo estudiante" is a no-op (no HTTP, rows unchanged)', () => {
-      const { fixture, http } = setup();
-      const before = fixture.componentInstance.dataSource.data;
+    it('clicking "Nuevo estudiante" opens the StudentNewComponent dialog', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => of(undefined),
+        } as unknown as MatDialogRef<StudentNewComponent, UserDto>);
+      const { fixture } = setup();
       const btn = fixture.debugElement.query(
         By.css('[data-testid="students-new-btn"]')
       );
       (btn.nativeElement as HTMLButtonElement).click();
       fixture.detectChanges();
-      http.expectNone((r) => r.url === USERS_URL);
-      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(openSpy).toHaveBeenCalledWith(
+        StudentNewComponent,
+        expect.objectContaining({ width: '560px' })
+      );
+      openSpy.mockRestore();
+    });
+
+    it('prepends the created student to the list when the dialog resolves with a user', () => {
+      const created: UserDto = makeStudent(999, {
+        profile: {
+          name: 'Zoe',
+          parentLastName: 'Perez',
+          motherLastName: 'Lopez',
+          email: 'z@example.com',
+          phone: '5559998888',
+          church: 'Nueva',
+        },
+      });
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => of(created),
+        } as unknown as MatDialogRef<StudentNewComponent, UserDto>);
+      const { fixture } = setup();
+
+      fixture.componentInstance.onCreate();
+      fixture.detectChanges();
+
+      const rows = fixture.componentInstance.rows();
+      expect(rows[0].id).toBe(999);
+      expect(rows[0].name).toBe('Zoe');
+      expect(fixture.componentInstance.dataSource.data[0].id).toBe(999);
+      openSpy.mockRestore();
+    });
+
+    it('leaves the list untouched when the dialog resolves with undefined', () => {
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({
+          afterClosed: () => of(undefined),
+        } as unknown as MatDialogRef<StudentNewComponent, UserDto>);
+      const { fixture } = setup();
+
+      const before = fixture.componentInstance.rows();
+      fixture.componentInstance.onCreate();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.rows()).toBe(before);
+      openSpy.mockRestore();
     });
 
     it('clicking edit is a no-op (no HTTP, rows unchanged)', () => {

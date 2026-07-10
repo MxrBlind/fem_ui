@@ -7,6 +7,7 @@ import {
 
 import { environment } from '../../../environments/environment';
 import { UserDto } from '../models/auth.model';
+import { CreateStudentRequest } from '@features/students/models/create-student.request';
 import { StudentService } from './student.service';
 
 describe('StudentService', () => {
@@ -43,11 +44,53 @@ describe('StudentService', () => {
     expect(received).toEqual(students);
   });
 
-  it('exposes only getAll (no create/update/delete methods)', () => {
+  it('exposes getAll and create only (no update/delete methods)', () => {
     const svc = service as unknown as Record<string, unknown>;
     expect(typeof svc['getAll']).toBe('function');
-    expect(svc['create']).toBeUndefined();
+    expect(typeof svc['create']).toBe('function');
     expect(svc['update']).toBeUndefined();
     expect(svc['delete']).toBeUndefined();
+  });
+
+  describe('create', () => {
+    const payload: CreateStudentRequest = {
+      username: 'jdoe',
+      password: 'secret12',
+      profile: {
+        name: 'Juan',
+        parentLastName: 'Doe',
+        motherLastName: 'Smith',
+        birthDate: '1969-05-31T00:00:00.000+00:00',
+        address: 'Calle 1',
+        church: 'Central',
+        email: 'jdoe@example.com',
+        phone: '5551234567',
+      },
+      role: { id: 3 },
+    };
+
+    it('POSTs to /api/user with the exact payload and forwards the response', () => {
+      const created: UserDto = { id: 42, username: 'jdoe' };
+      let received: UserDto | undefined;
+      service.create(payload).subscribe((v) => (received = v));
+
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/user`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(payload);
+      req.flush(created);
+
+      expect(received).toEqual(created);
+    });
+
+    it('propagates non-2xx as an HttpErrorResponse', () => {
+      let errorStatus: number | undefined;
+      service.create(payload).subscribe({
+        error: (err: { status?: number }) => (errorStatus = err.status),
+      });
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/user`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      expect(errorStatus).toBe(500);
+    });
   });
 });
