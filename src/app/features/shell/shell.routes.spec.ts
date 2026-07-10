@@ -14,4 +14,12 @@ describe('SHELL_ROUTES', () => {
     expect(route?.data?.['roles']).toEqual(['admin']);
     expect(route?.loadComponent).toBeDefined();
   });
+
+  it('exposes the teacher list under the "teachers" path, admin-only', () => {
+    const route = SHELL_ROUTES.find((r) => r.path === 'teachers');
+    expect(route).toBeDefined();
+    expect(route?.data?.['roles']).toEqual(['admin']);
+    expect(route?.loadComponent).toBeDefined();
+    expect(route?.canMatch?.length).toBeGreaterThan(0);
+  });
 });

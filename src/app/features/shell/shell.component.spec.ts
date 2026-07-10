@@ -168,6 +168,14 @@ describe('ShellComponent', () => {
       expect(textVisible(fixture, 'Materias')).toBe(true);
     });
 
+    it('1.13d "Maestros" links to /teachers with routerLinkActive', () => {
+      const fixture = setup(admin);
+      const links = Array.from(qAll(fixture, 'a[mat-list-item]')) as HTMLAnchorElement[];
+      const maestros = links.find((el) => (el.textContent ?? '').trim().includes('Maestros'));
+      expect(maestros).toBeTruthy();
+      expect(maestros!.getAttribute('href')).toBe('/teachers');
+    });
+
     it('1.13b absent for teacher', () => {
       const fixture = setup(teacher);
       expect(textVisible(fixture, 'Catálogos')).toBe(false);

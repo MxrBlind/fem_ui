@@ -47,4 +47,13 @@ export const SHELL_ROUTES: Routes = [
     loadComponent: () =>
       import('../cycles/cycle-list/cycle-list.component').then((m) => m.CycleListComponent),
   },
+  {
+    path: 'teachers',
+    canMatch: [roleGuard],
+    data: { roles: ['admin'] },
+    loadComponent: () =>
+      import('../teachers/teacher-list/teacher-list.component').then(
+        (m) => m.TeacherListComponent
+      ),
+  },
 ];
