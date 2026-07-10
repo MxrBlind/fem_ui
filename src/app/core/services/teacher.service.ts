@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '@env/environment';
 import { UserDto } from '@core/models/auth.model';
+import { CreateTeacherRequest } from '@features/teachers/models/create-teacher.request';
 
 @Injectable({ providedIn: 'root' })
 export class TeacherService {
@@ -14,5 +15,9 @@ export class TeacherService {
     return this.http.get<UserDto[]>(this.baseUrl, {
       params: new HttpParams().set('role', 'ROLE_TEACHER'),
     });
+  }
+
+  create(payload: CreateTeacherRequest): Observable<UserDto> {
+    return this.http.post<UserDto>(this.baseUrl, payload);
   }
 }
