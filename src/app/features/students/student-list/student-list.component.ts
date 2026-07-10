@@ -12,6 +12,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -26,6 +27,7 @@ import { finalize } from 'rxjs';
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { UserDto } from '@core/models/auth.model';
 import { StudentService } from '@core/services/student.service';
+import { StudentNewComponent } from '../student-new/student-new.component';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los estudiantes. Intenta de nuevo más tarde.';
@@ -50,6 +52,7 @@ export interface StudentRow {
     HasRoleDirective,
     MatButtonModule,
     MatCardModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -67,6 +70,7 @@ export class StudentListComponent implements OnInit, AfterViewInit {
   private readonly studentService = inject(StudentService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   readonly displayedColumns = [
     'id',
@@ -153,7 +157,23 @@ export class StudentListComponent implements OnInit, AfterViewInit {
   }
 
   onCreate(): void {
-    // TODO(FEM-*): open student-new dialog once the create-student ticket lands.
+    const ref = this.dialog.open<StudentNewComponent, undefined, UserDto>(
+      StudentNewComponent,
+      {
+        width: '560px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created) => {
+        if (!created) return;
+        const row = this.toRow(created);
+        this.rows.update((rows) => [row, ...rows]);
+        this.dataSource.data = this.rows();
+      });
   }
 
   onEdit(_row: StudentRow): void {
