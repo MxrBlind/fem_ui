@@ -112,12 +112,14 @@
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button
+                  *hasRole="['admin']"
                   mat-icon-button
                   color="warn"
                   type="button"
                   matTooltip="Eliminar maestro"
                   data-testid="teacher-delete-btn"
                   [attr.aria-label]="'Eliminar maestro ' + row.id"
+                  [disabled]="deletingId() === row.id"
                   (click)="onDelete(row)"
                 >
                   <mat-icon>delete</mat-icon>
