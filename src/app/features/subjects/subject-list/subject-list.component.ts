@@ -28,6 +28,10 @@ import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { SubjectService } from '@core/services/subject.service';
 import { SubjectDto } from '@features/enrollments/models/enrollment.model';
 import { SubjectNewComponent } from '../subject-new/subject-new.component';
+import {
+  SubjectEditComponent,
+  SubjectEditDialogData,
+} from '../subject-edit/subject-edit.component';
 
 export const ADMIN_TITLE = 'Administrar materias';
 export const NEW_BUTTON_LABEL = 'Nueva materia';
@@ -185,8 +189,25 @@ export class SubjectListComponent implements OnInit, AfterViewInit {
       });
   }
 
-  onEdit(_row: SubjectRow): void {
-    // TODO(FEM-*): open subject-edit dialog once that ticket lands.
+  onEdit(row: SubjectRow): void {
+    const ref = this.dialog.open<
+      SubjectEditComponent,
+      SubjectEditDialogData,
+      SubjectDto | undefined
+    >(SubjectEditComponent, {
+      data: { subject: row.raw },
+      width: '480px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      disableClose: true,
+    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((dto) => {
+        if (!dto) return;
+        this.reload();
+      });
   }
 
   onDelete(_row: SubjectRow): void {
