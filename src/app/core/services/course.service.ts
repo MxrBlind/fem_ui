@@ -30,7 +30,7 @@ export class CourseService {
 
   update(id: number, payload: CourseDto): Observable<CourseDto> {
     return this.http.put<CourseDto>(
-      `${this.baseUrl}/${id}?includeDependencies=false`,
+      `${this.baseUrl}/${id}?includeDependencies=true`,
       payload
     );
   }
