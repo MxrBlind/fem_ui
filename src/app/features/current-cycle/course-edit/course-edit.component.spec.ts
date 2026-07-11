@@ -258,13 +258,13 @@ describe('CourseEditComponent', () => {
   });
 
   describe('submit', () => {
-    it('PUTs the expected payload to /api/course/{id}?includeDependencies=false and closes with the updated DTO on success', () => {
+    it('PUTs the expected payload to /api/course/{id}?includeDependencies=true and closes with the updated DTO on success', () => {
       const { fixture, http, dialogRef, snackOpen, data } = setup();
       fixture.componentInstance.form.controls.credits.setValue(7);
       fixture.componentInstance.onSubmit();
 
       const req = http.expectOne(
-        `${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=false`
+        `${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=true`
       );
       expect(req.request.method).toBe('PUT');
       expect(req.request.body).toEqual({
@@ -291,7 +291,7 @@ describe('CourseEditComponent', () => {
       const { fixture, http, dialogRef, snackOpen, data } = setup();
       fixture.componentInstance.onSubmit();
       http
-        .expectOne(`${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=false`)
+        .expectOne(`${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=true`)
         .flush('boom', { status: 500, statusText: 'Server Error' });
 
       expect(snackOpen).toHaveBeenCalledWith(
@@ -314,7 +314,7 @@ describe('CourseEditComponent', () => {
       fixture.componentInstance.form.controls.credits.setValue(0);
       fixture.componentInstance.onSubmit();
       http.expectNone(
-        `${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=false`
+        `${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=true`
       );
     });
   });
@@ -325,7 +325,7 @@ describe('CourseEditComponent', () => {
       fixture.componentInstance.onCancel();
       expect(dialogRef.close).toHaveBeenCalledWith();
       http.expectNone(
-        `${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=false`
+        `${environment.apiBaseUrl}/api/course/${data.id}?includeDependencies=true`
       );
     });
   });
