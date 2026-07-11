@@ -45,12 +45,51 @@ describe('StudentService', () => {
     expect(received).toEqual(students);
   });
 
-  it('exposes getAll, create, and update (no delete method)', () => {
+  it('exposes getAll, create, update, and delete', () => {
     const svc = service as unknown as Record<string, unknown>;
     expect(typeof svc['getAll']).toBe('function');
     expect(typeof svc['create']).toBe('function');
     expect(typeof svc['update']).toBe('function');
-    expect(svc['delete']).toBeUndefined();
+    expect(typeof svc['delete']).toBe('function');
+  });
+
+  describe('delete', () => {
+    it('issues DELETE /api/user/:id and completes with no body', () => {
+      let completed = false;
+      let emitted = false;
+      service.delete(42).subscribe({
+        next: () => (emitted = true),
+        complete: () => (completed = true),
+      });
+
+      const req = http.expectOne(
+        (r) =>
+          r.method === 'DELETE' &&
+          r.url === `${environment.apiBaseUrl}/api/user/42`
+      );
+      expect(req.request.body).toBeNull();
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      expect(emitted).toBe(true);
+      expect(completed).toBe(true);
+    });
+
+    it('propagates HTTP errors from delete', () => {
+      let errorStatus: number | undefined;
+      service.delete(3).subscribe({
+        error: (err: { status?: number }) => (errorStatus = err.status),
+      });
+
+      http
+        .expectOne(
+          (r) =>
+            r.method === 'DELETE' &&
+            r.url === `${environment.apiBaseUrl}/api/user/3`
+        )
+        .flush(null, { status: 500, statusText: 'Server Error' });
+
+      expect(errorStatus).toBe(500);
+    });
   });
 
   describe('create', () => {
