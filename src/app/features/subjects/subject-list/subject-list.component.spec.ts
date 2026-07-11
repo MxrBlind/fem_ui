@@ -7,8 +7,12 @@ import {
 } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { signal } from '@angular/core';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
+import { of } from 'rxjs';
+
+import { SubjectNewComponent } from '../subject-new/subject-new.component';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
@@ -299,16 +303,65 @@ describe('SubjectListComponent', () => {
       expect(delEl.getAttribute('aria-label')).toBe('Eliminar materia');
     });
 
-    it('onCreate/onEdit/onDelete are no-ops (no HTTP, no throw)', () => {
+    it('onEdit/onDelete are no-ops (no HTTP, no throw)', () => {
       const { fixture, http } = setup();
       const before = fixture.componentInstance.dataSource.data;
       const row = fixture.componentInstance.rows()[0];
-      expect(() => fixture.componentInstance.onCreate()).not.toThrow();
       expect(() => fixture.componentInstance.onEdit(row)).not.toThrow();
       expect(() => fixture.componentInstance.onDelete(row)).not.toThrow();
       fixture.detectChanges();
       http.expectNone((r) => r.url === SUBJECTS_URL);
       expect(fixture.componentInstance.dataSource.data).toBe(before);
+    });
+  });
+
+  describe('onCreate wiring', () => {
+    it('opens SubjectNewComponent with the expected config', () => {
+      const { fixture } = setup();
+      const dialogRef = {
+        afterClosed: () => of(undefined),
+      } as unknown as MatDialogRef<SubjectNewComponent, SubjectDto | undefined>;
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(dialogRef);
+
+      fixture.componentInstance.onCreate();
+
+      expect(openSpy).toHaveBeenCalledWith(SubjectNewComponent, {
+        width: '480px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+        disableClose: true,
+      });
+    });
+
+    it('refreshes the list when the dialog closes with a SubjectDto', () => {
+      const { fixture, http } = setup();
+      const created = makeSubject(99, { description: 'Nueva' });
+      const dialogRef = {
+        afterClosed: () => of(created),
+      } as unknown as MatDialogRef<SubjectNewComponent, SubjectDto | undefined>;
+      vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(dialogRef);
+
+      fixture.componentInstance.onCreate();
+
+      const req = http.expectOne((r) => r.method === 'GET' && r.url === SUBJECTS_URL);
+      req.flush([makeSubject(1), makeSubject(2), makeSubject(3), created]);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.rows().map((r) => r.id)).toContain(99);
+    });
+
+    it('does not refresh the list when the dialog closes with undefined', () => {
+      const { fixture, http } = setup();
+      const dialogRef = {
+        afterClosed: () => of(undefined),
+      } as unknown as MatDialogRef<SubjectNewComponent, SubjectDto | undefined>;
+      vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(dialogRef);
+
+      fixture.componentInstance.onCreate();
+      fixture.detectChanges();
+      http.expectNone((r) => r.url === SUBJECTS_URL);
     });
   });
 });

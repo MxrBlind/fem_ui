@@ -3,7 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '@env/environment';
-import { SubjectDto } from '@features/enrollments/models/enrollment.model';
+import {
+  CreateSubjectRequest,
+  SubjectDto,
+} from '@features/enrollments/models/enrollment.model';
 
 @Injectable({ providedIn: 'root' })
 export class SubjectService {
@@ -12,5 +15,9 @@ export class SubjectService {
 
   list(): Observable<SubjectDto[]> {
     return this.http.get<SubjectDto[]>(this.baseUrl);
+  }
+
+  create(payload: CreateSubjectRequest): Observable<SubjectDto> {
+    return this.http.post<SubjectDto>(this.baseUrl, payload);
   }
 }

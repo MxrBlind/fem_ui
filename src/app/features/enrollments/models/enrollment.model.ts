@@ -24,6 +24,13 @@ export interface SubjectDto {
   level: LevelDto;
 }
 
+export interface CreateSubjectRequest {
+  code: string;
+  description: string;
+  category: { id: number };
+  level: { id: number };
+}
+
 export interface CourseDto {
   id?: number;
   subject: SubjectDto;

@@ -12,6 +12,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -26,6 +27,7 @@ import { finalize } from 'rxjs';
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { SubjectService } from '@core/services/subject.service';
 import { SubjectDto } from '@features/enrollments/models/enrollment.model';
+import { SubjectNewComponent } from '../subject-new/subject-new.component';
 
 export const ADMIN_TITLE = 'Administrar materias';
 export const NEW_BUTTON_LABEL = 'Nueva materia';
@@ -50,6 +52,7 @@ export interface SubjectRow {
     HasRoleDirective,
     MatButtonModule,
     MatCardModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -67,6 +70,7 @@ export class SubjectListComponent implements OnInit, AfterViewInit {
   private readonly subjectService = inject(SubjectService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   readonly title = ADMIN_TITLE;
   readonly newButtonLabel = NEW_BUTTON_LABEL;
@@ -139,7 +143,46 @@ export class SubjectListComponent implements OnInit, AfterViewInit {
   }
 
   onCreate(): void {
-    // TODO(FEM-*): open subject-new dialog once that ticket lands.
+    const ref = this.dialog.open<SubjectNewComponent, undefined, SubjectDto | undefined>(
+      SubjectNewComponent,
+      {
+        width: '480px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+        disableClose: true,
+      }
+    );
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((dto) => {
+        if (!dto) return;
+        this.reload();
+      });
+  }
+
+  private reload(): void {
+    this.loading.set(true);
+    this.subjectService
+      .list()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.loading.set(false))
+      )
+      .subscribe({
+        next: (subjects) => {
+          const rows = subjects.map((s) => this.toRow(s));
+          this.rows.set(rows);
+          this.dataSource.data = rows;
+        },
+        error: (err) => {
+          console.error('[subject-list] failed to load', err);
+          this.snackBar.open(LOAD_ERROR_MESSAGE, 'Cerrar', {
+            duration: 5000,
+            panelClass: 'snackbar-error',
+          });
+        },
+      });
   }
 
   onEdit(_row: SubjectRow): void {
