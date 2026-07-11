@@ -119,6 +119,7 @@
                   matTooltip="Eliminar estudiante"
                   data-testid="student-delete-btn"
                   [attr.aria-label]="'Eliminar estudiante ' + row.id"
+                  [disabled]="deletingId() === row.id"
                   (click)="onDelete(row)"
                 >
                   <mat-icon>delete</mat-icon>

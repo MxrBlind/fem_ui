@@ -6,7 +6,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { signal } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -16,9 +16,12 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
 import { UserDto } from '@core/models/auth.model';
+import { StudentDeleteConfirmComponent } from '../student-delete-confirm/student-delete-confirm.component';
 import { StudentEditComponent } from '../student-edit/student-edit.component';
 import { StudentNewComponent } from '../student-new/student-new.component';
 import {
+  DELETE_ERROR_MESSAGE,
+  DELETE_SUCCESS_MESSAGE,
   LOAD_ERROR_MESSAGE,
   STUDENT_FALLBACK,
   StudentListComponent,
@@ -466,16 +469,117 @@ describe('StudentListComponent', () => {
       openSpy.mockRestore();
     });
 
-    it('clicking delete is a no-op (no HTTP, rows unchanged)', () => {
-      const { fixture, http } = setup();
-      const before = fixture.componentInstance.dataSource.data;
-      const delBtn = fixture.debugElement.query(
-        By.css('[data-testid="student-delete-btn"]')
+    it('onDelete opens StudentDeleteConfirmComponent with the expected config and data', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture } = setup();
+
+      const row = fixture.componentInstance.rows()[0];
+      fixture.componentInstance.onDelete(row);
+
+      expect(openSpy).toHaveBeenCalledWith(
+        StudentDeleteConfirmComponent,
+        expect.objectContaining({
+          width: '420px',
+          autoFocus: 'first-tabbable',
+          restoreFocus: true,
+          data: { row },
+        })
       );
-      (delBtn.nativeElement as HTMLButtonElement).click();
-      fixture.detectChanges();
-      http.expectNone((r) => r.url === USERS_URL);
+      afterClosed$.complete();
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=false, does not call delete and rows are unchanged', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup();
+      const before = fixture.componentInstance.dataSource.data;
+      const callsBefore = snackOpen.mock.calls.length;
+
+      const row = before[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(false);
+      afterClosed$.complete();
+
+      http.expectNone(`${USERS_URL}/${row.id}`);
+      http.expectNone((r) => r.method === 'GET' && r.url === USERS_URL);
       expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(snackOpen.mock.calls.length).toBe(callsBefore);
+      openSpy.mockRestore();
+    });
+
+    it('on confirm=true and success, deletes, reloads list, and shows success snackbar', () => {
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup();
+
+      const row = fixture.componentInstance.rows()[0];
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      const delReq = http.expectOne(`${USERS_URL}/${row.id}`);
+      expect(delReq.request.method).toBe('DELETE');
+      delReq.flush(null, { status: 204, statusText: 'No Content' });
+
+      http
+        .expectOne(
+          (r) =>
+            r.method === 'GET' &&
+            r.url === USERS_URL &&
+            r.params.get('role') === 'ROLE_STUDENT'
+        )
+        .flush([makeStudent(2), makeStudent(3)]);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.rows().length).toBe(2);
+      expect(fixture.componentInstance.rows().some((r) => r.id === row.id)).toBe(false);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_SUCCESS_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 3000 })
+      );
+      openSpy.mockRestore();
+    });
+
+    it('on DELETE error, keeps rows, shows error snackbar, logs, and resets deletingId', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const afterClosed$ = new Subject<boolean | undefined>();
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => afterClosed$.asObservable() } as never);
+      const { fixture, http, snackOpen } = setup();
+
+      const row = fixture.componentInstance.rows()[0];
+      const before = fixture.componentInstance.dataSource.data;
+      fixture.componentInstance.onDelete(row);
+      afterClosed$.next(true);
+      afterClosed$.complete();
+
+      http
+        .expectOne(`${USERS_URL}/${row.id}`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      http.expectNone((r) => r.method === 'GET' && r.url === USERS_URL);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_ERROR_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 5000, panelClass: 'snackbar-error' })
+      );
+      expect(errorSpy).toHaveBeenCalledWith('[student-list] failed to delete', expect.anything());
+      errorSpy.mockRestore();
+      openSpy.mockRestore();
     });
   });
 });

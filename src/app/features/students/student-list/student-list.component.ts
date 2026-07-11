@@ -22,16 +22,22 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { finalize } from 'rxjs';
+import { catchError, filter, finalize, of, switchMap } from 'rxjs';
 
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { UserDto } from '@core/models/auth.model';
 import { StudentService } from '@core/services/student.service';
+import {
+  StudentDeleteConfirmComponent,
+  StudentDeleteConfirmData,
+} from '../student-delete-confirm/student-delete-confirm.component';
 import { StudentEditComponent } from '../student-edit/student-edit.component';
 import { StudentNewComponent } from '../student-new/student-new.component';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los estudiantes. Intenta de nuevo más tarde.';
+export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
+export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
 export const STUDENT_FALLBACK = '—';
 
 export interface StudentRow {
@@ -87,6 +93,7 @@ export class StudentListComponent implements OnInit, AfterViewInit {
   readonly rows = signal<StudentRow[]>([]);
   readonly loading = signal(true);
   readonly filterText = signal('');
+  readonly deletingId = signal<number | null>(null);
 
   readonly dataSource = new MatTableDataSource<StudentRow>([]);
 
@@ -200,8 +207,46 @@ export class StudentListComponent implements OnInit, AfterViewInit {
       });
   }
 
-  onDelete(_row: StudentRow): void {
-    // TODO(FEM-*): open student-delete-confirm dialog once the delete-student ticket lands.
+  onDelete(row: StudentRow): void {
+    const ref = this.dialog.open<
+      StudentDeleteConfirmComponent,
+      StudentDeleteConfirmData,
+      boolean
+    >(StudentDeleteConfirmComponent, {
+      width: '420px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+      data: { row },
+    });
+
+    ref
+      .afterClosed()
+      .pipe(
+        filter((confirmed): confirmed is true => confirmed === true),
+        switchMap(() => {
+          this.deletingId.set(row.id);
+          return this.studentService.delete(row.id).pipe(
+            switchMap(() => this.studentService.getAll()),
+            catchError((err) => {
+              console.error('[student-list] failed to delete', err);
+              this.snackBar.open(DELETE_ERROR_MESSAGE, 'Cerrar', {
+                duration: 5000,
+                panelClass: 'snackbar-error',
+              });
+              return of(null);
+            }),
+            finalize(() => this.deletingId.set(null))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((users) => {
+        if (users === null) return;
+        const rows = users.map((u) => this.toRow(u));
+        this.rows.set(rows);
+        this.dataSource.data = rows;
+        this.snackBar.open(DELETE_SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
+      });
   }
 
   private toRow(user: UserDto): StudentRow {
