@@ -1,0 +1,114 @@
+<h2 mat-dialog-title>Nueva materia</h2>
+
+<mat-dialog-content class="subject-new__content">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando datos del formulario" />
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="subject-new__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Código de materia</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        maxlength="50"
+        formControlName="code"
+      />
+      @if (form.controls.code.hasError('required')) {
+        <mat-error>El código es requerido.</mat-error>
+      } @else if (form.controls.code.hasError('maxlength')) {
+        <mat-error>El código no puede exceder 50 caracteres.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Nombre de materia</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        maxlength="100"
+        formControlName="description"
+      />
+      @if (form.controls.description.hasError('required')) {
+        <mat-error>El nombre es requerido.</mat-error>
+      } @else if (form.controls.description.hasError('maxlength')) {
+        <mat-error>El nombre no puede exceder 100 caracteres.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Categoría</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [matAutocomplete]="categoryAuto"
+        [value]="displayCategoryById(form.controls.categoryId.value)"
+        (input)="onCategoryInput(($any($event.target)).value)"
+        [disabled]="loading() || loadFailed()"
+      />
+      <mat-autocomplete
+        #categoryAuto="matAutocomplete"
+        [displayWith]="displayCategory"
+        (optionSelected)="onCategorySelected($event.option.value)"
+      >
+        @for (category of filteredCategories(); track category.id) {
+          <mat-option [value]="category">{{ displayCategory(category) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (form.controls.categoryId.touched && form.controls.categoryId.hasError('required')) {
+        <mat-error>Selecciona una categoría.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Nivel</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        [matAutocomplete]="levelAuto"
+        [value]="displayLevelById(form.controls.levelId.value)"
+        (input)="onLevelInput(($any($event.target)).value)"
+        [disabled]="loading() || loadFailed()"
+      />
+      <mat-autocomplete
+        #levelAuto="matAutocomplete"
+        [displayWith]="displayLevel"
+        (optionSelected)="onLevelSelected($event.option.value)"
+      >
+        @for (level of filteredLevels(); track level.id) {
+          <mat-option [value]="level">{{ displayLevel(level) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (form.controls.levelId.touched && form.controls.levelId.hasError('required')) {
+        <mat-error>Selecciona un nivel.</mat-error>
+      }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="onCancel()" [disabled]="saving()">
+    Cancelar
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    data-testid="subject-new-submit"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || saving() || loading() || loadFailed()"
+  >
+    @if (saving()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="18"
+        class="subject-new__spinner"
+      />
+    }
+    Crear
+  </button>
+</mat-dialog-actions>
