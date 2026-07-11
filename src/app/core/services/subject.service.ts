@@ -7,6 +7,7 @@ import {
   CreateSubjectRequest,
   SubjectDto,
 } from '@features/enrollments/models/enrollment.model';
+import { UpdateSubjectRequest } from '@features/subjects/models/update-subject.request';
 
 @Injectable({ providedIn: 'root' })
 export class SubjectService {
@@ -19,5 +20,9 @@ export class SubjectService {
 
   create(payload: CreateSubjectRequest): Observable<SubjectDto> {
     return this.http.post<SubjectDto>(this.baseUrl, payload);
+  }
+
+  update(id: number, payload: UpdateSubjectRequest): Observable<SubjectDto> {
+    return this.http.put<SubjectDto>(`${this.baseUrl}/${id}?includeDependencies=true`, payload);
   }
 }

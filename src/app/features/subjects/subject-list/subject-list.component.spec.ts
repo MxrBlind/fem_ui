@@ -13,6 +13,7 @@ import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 
 import { SubjectNewComponent } from '../subject-new/subject-new.component';
+import { SubjectEditComponent } from '../subject-edit/subject-edit.component';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
@@ -303,15 +304,70 @@ describe('SubjectListComponent', () => {
       expect(delEl.getAttribute('aria-label')).toBe('Eliminar materia');
     });
 
-    it('onEdit/onDelete are no-ops (no HTTP, no throw)', () => {
+    it('onDelete is a no-op (no HTTP, no throw)', () => {
       const { fixture, http } = setup();
       const before = fixture.componentInstance.dataSource.data;
       const row = fixture.componentInstance.rows()[0];
-      expect(() => fixture.componentInstance.onEdit(row)).not.toThrow();
       expect(() => fixture.componentInstance.onDelete(row)).not.toThrow();
       fixture.detectChanges();
       http.expectNone((r) => r.url === SUBJECTS_URL);
       expect(fixture.componentInstance.dataSource.data).toBe(before);
+    });
+  });
+
+  describe('onEdit wiring', () => {
+    it('opens SubjectEditComponent with the row subject and expected config', () => {
+      const { fixture } = setup();
+      const row = fixture.componentInstance.rows()[0];
+      const dialogRef = {
+        afterClosed: () => of(undefined),
+      } as unknown as MatDialogRef<SubjectEditComponent, SubjectDto | undefined>;
+      const openSpy = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue(dialogRef);
+
+      fixture.componentInstance.onEdit(row);
+
+      expect(openSpy).toHaveBeenCalledWith(SubjectEditComponent, {
+        data: { subject: row.raw },
+        width: '480px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+        disableClose: true,
+      });
+    });
+
+    it('refreshes the list when the dialog closes with a SubjectDto', () => {
+      const { fixture, http } = setup();
+      const row = fixture.componentInstance.rows()[0];
+      const updated = makeSubject(1, { description: 'Editada' });
+      const dialogRef = {
+        afterClosed: () => of(updated),
+      } as unknown as MatDialogRef<SubjectEditComponent, SubjectDto | undefined>;
+      vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(dialogRef);
+
+      fixture.componentInstance.onEdit(row);
+
+      const req = http.expectOne((r) => r.method === 'GET' && r.url === SUBJECTS_URL);
+      req.flush([updated, makeSubject(2), makeSubject(3)]);
+      fixture.detectChanges();
+
+      expect(
+        fixture.componentInstance.rows().find((r) => r.id === 1)?.description
+      ).toBe('Editada');
+    });
+
+    it('does not refresh the list when the dialog closes with undefined', () => {
+      const { fixture, http } = setup();
+      const row = fixture.componentInstance.rows()[0];
+      const dialogRef = {
+        afterClosed: () => of(undefined),
+      } as unknown as MatDialogRef<SubjectEditComponent, SubjectDto | undefined>;
+      vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(dialogRef);
+
+      fixture.componentInstance.onEdit(row);
+      fixture.detectChanges();
+      http.expectNone((r) => r.url === SUBJECTS_URL);
     });
   });
 
