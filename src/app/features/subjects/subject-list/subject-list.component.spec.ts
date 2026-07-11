@@ -14,6 +14,7 @@ import { of } from 'rxjs';
 
 import { SubjectNewComponent } from '../subject-new/subject-new.component';
 import { SubjectEditComponent } from '../subject-edit/subject-edit.component';
+import { SubjectDeleteConfirmComponent } from '../subject-delete-confirm/subject-delete-confirm.component';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
@@ -21,6 +22,8 @@ import { AuthUser } from '@core/auth/rbac';
 import { SubjectDto } from '@features/enrollments/models/enrollment.model';
 import {
   ADMIN_TITLE,
+  DELETE_ERROR_MESSAGE,
+  DELETE_SUCCESS_MESSAGE,
   LOAD_ERROR_MESSAGE,
   NEW_BUTTON_LABEL,
   SUBJECT_FALLBACK,
@@ -304,14 +307,95 @@ describe('SubjectListComponent', () => {
       expect(delEl.getAttribute('aria-label')).toBe('Eliminar materia');
     });
 
-    it('onDelete is a no-op (no HTTP, no throw)', () => {
-      const { fixture, http } = setup();
-      const before = fixture.componentInstance.dataSource.data;
+  });
+
+  describe('onDelete wiring', () => {
+    function stubDialogClose(value: boolean | undefined) {
+      const dialogRef = {
+        afterClosed: () => of(value),
+      } as unknown as MatDialogRef<SubjectDeleteConfirmComponent, boolean>;
+      return vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(dialogRef);
+    }
+
+    it('opens SubjectDeleteConfirmComponent with the row and expected config', () => {
+      const { fixture } = setup();
       const row = fixture.componentInstance.rows()[0];
-      expect(() => fixture.componentInstance.onDelete(row)).not.toThrow();
+      const openSpy = stubDialogClose(undefined);
+
+      fixture.componentInstance.onDelete(row);
+
+      expect(openSpy).toHaveBeenCalledWith(SubjectDeleteConfirmComponent, {
+        data: { row },
+        width: '420px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      });
+    });
+
+    it('on confirm=true, DELETEs then reloads and shows the success snackbar', () => {
+      const { fixture, http, snackOpen } = setup();
+      const row = fixture.componentInstance.rows()[0];
+      stubDialogClose(true);
+
+      fixture.componentInstance.onDelete(row);
+      expect(fixture.componentInstance.deletingId()).toBe(row.id);
+
+      const del = http.expectOne(`${SUBJECTS_URL}/${row.id}`);
+      expect(del.request.method).toBe('DELETE');
+      del.flush(null);
+
+      const list = http.expectOne((r) => r.method === 'GET' && r.url === SUBJECTS_URL);
+      list.flush([makeSubject(2), makeSubject(3)]);
       fixture.detectChanges();
-      http.expectNone((r) => r.url === SUBJECTS_URL);
+
+      expect(fixture.componentInstance.rows().map((r) => r.id)).toEqual([2, 3]);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_SUCCESS_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 3000 })
+      );
+    });
+
+    it('on DELETE error shows the error snackbar, does not mutate rows, clears deletingId', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { fixture, http, snackOpen } = setup();
+      const row = fixture.componentInstance.rows()[0];
+      const before = fixture.componentInstance.dataSource.data;
+      stubDialogClose(true);
+
+      fixture.componentInstance.onDelete(row);
+      http
+        .expectOne(`${SUBJECTS_URL}/${row.id}`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.deletingId()).toBeNull();
       expect(fixture.componentInstance.dataSource.data).toBe(before);
+      expect(snackOpen).toHaveBeenCalledWith(
+        DELETE_ERROR_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ duration: 5000, panelClass: 'snackbar-error' })
+      );
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[subject-list] failed to delete',
+        expect.anything()
+      );
+      http.expectNone((r) => r.method === 'GET' && r.url === SUBJECTS_URL);
+      errorSpy.mockRestore();
+    });
+
+    it('on confirm=false neither DELETE nor GET is issued', () => {
+      const { fixture, http } = setup();
+      const row = fixture.componentInstance.rows()[0];
+      stubDialogClose(false);
+
+      fixture.componentInstance.onDelete(row);
+      fixture.detectChanges();
+
+      http.expectNone((r) => r.url === SUBJECTS_URL);
+      http.expectNone((r) => r.url === `${SUBJECTS_URL}/${row.id}`);
+      expect(fixture.componentInstance.deletingId()).toBeNull();
     });
   });
 

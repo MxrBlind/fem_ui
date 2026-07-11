@@ -22,7 +22,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { finalize } from 'rxjs';
+import { catchError, filter, finalize, of, switchMap } from 'rxjs';
 
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { SubjectService } from '@core/services/subject.service';
@@ -32,12 +32,18 @@ import {
   SubjectEditComponent,
   SubjectEditDialogData,
 } from '../subject-edit/subject-edit.component';
+import {
+  SubjectDeleteConfirmComponent,
+  SubjectDeleteConfirmData,
+} from '../subject-delete-confirm/subject-delete-confirm.component';
 
 export const ADMIN_TITLE = 'Administrar materias';
 export const NEW_BUTTON_LABEL = 'Nueva materia';
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar las materias. Intenta de nuevo más tarde.';
 export const SUBJECT_FALLBACK = '—';
+export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
+export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
 
 export interface SubjectRow {
   id: number;
@@ -84,6 +90,7 @@ export class SubjectListComponent implements OnInit, AfterViewInit {
   readonly rows = signal<SubjectRow[]>([]);
   readonly loading = signal(true);
   readonly filterText = signal('');
+  readonly deletingId = signal<number | null>(null);
 
   readonly dataSource = new MatTableDataSource<SubjectRow>([]);
 
@@ -210,8 +217,46 @@ export class SubjectListComponent implements OnInit, AfterViewInit {
       });
   }
 
-  onDelete(_row: SubjectRow): void {
-    // TODO(FEM-*): open subject-delete-confirm dialog once that ticket lands.
+  onDelete(row: SubjectRow): void {
+    const ref = this.dialog.open<
+      SubjectDeleteConfirmComponent,
+      SubjectDeleteConfirmData,
+      boolean
+    >(SubjectDeleteConfirmComponent, {
+      data: { row },
+      width: '420px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+    });
+
+    ref
+      .afterClosed()
+      .pipe(
+        filter((confirmed): confirmed is true => confirmed === true),
+        switchMap(() => {
+          this.deletingId.set(row.id);
+          return this.subjectService.delete(row.id).pipe(
+            switchMap(() => this.subjectService.list()),
+            catchError((err) => {
+              console.error('[subject-list] failed to delete', err);
+              this.snackBar.open(DELETE_ERROR_MESSAGE, 'Cerrar', {
+                duration: 5000,
+                panelClass: 'snackbar-error',
+              });
+              return of(null);
+            }),
+            finalize(() => this.deletingId.set(null))
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((subjects) => {
+        if (subjects === null) return;
+        const rows = subjects.map((s) => this.toRow(s));
+        this.rows.set(rows);
+        this.dataSource.data = rows;
+        this.snackBar.open(DELETE_SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
+      });
   }
 
   private toRow(subject: SubjectDto): SubjectRow {
