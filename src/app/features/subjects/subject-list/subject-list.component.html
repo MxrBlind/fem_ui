@@ -1,0 +1,132 @@
+<section class="subject-list">
+  <header class="subject-list__header">
+    <h2
+      class="subject-list__title mat-headline-small"
+      data-testid="subjects-title"
+    >
+      {{ title }}
+    </h2>
+
+    <button
+      *hasRole="['admin']"
+      mat-flat-button
+      color="primary"
+      type="button"
+      data-testid="subjects-new-btn"
+      (click)="onCreate()"
+    >
+      <mat-icon>add</mat-icon>
+      {{ newButtonLabel }}
+    </button>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando materias" />
+  }
+
+  <mat-card class="subject-list__card">
+    <mat-form-field appearance="outline" class="subject-list__filter">
+      <mat-label>Filtrar</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        data-testid="subjects-filter"
+        [value]="filterText()"
+        (input)="onFilterInput(($any($event.target)).value)"
+      />
+      @if (filterText().length > 0) {
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          aria-label="Limpiar filtro"
+          (click)="clearFilter()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    @if (!loading() && rows().length === 0) {
+      <div class="subject-list__empty">
+        <mat-icon>menu_book</mat-icon>
+        <p class="mat-body-large">No hay materias registradas.</p>
+      </div>
+    } @else {
+      <div class="subject-list__table-wrapper">
+        <table
+          mat-table
+          matSort
+          [dataSource]="dataSource"
+          class="subject-list__table"
+          data-testid="subjects-table"
+        >
+          <ng-container matColumnDef="id">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
+            <td mat-cell *matCellDef="let row">{{ row.id }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
+            <td mat-cell *matCellDef="let row">{{ row.description }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="category">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoría</th>
+            <td mat-cell *matCellDef="let row">{{ row.category }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="level">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nivel</th>
+            <td mat-cell *matCellDef="let row">{{ row.level }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Acciones</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="row-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Editar"
+                  aria-label="Editar materia"
+                  data-testid="subject-edit-btn"
+                  (click)="onEdit(row)"
+                >
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  type="button"
+                  matTooltip="Eliminar"
+                  aria-label="Eliminar materia"
+                  data-testid="subject-delete-btn"
+                  (click)="onDelete(row)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            data-testid="subject-row"
+          ></tr>
+        </table>
+
+        <mat-paginator
+          [pageSizeOptions]="[5, 10, 25, 50]"
+          [pageSize]="10"
+          showFirstLastButtons
+          aria-label="Paginación de materias"
+        />
+      </div>
+    }
+  </mat-card>
+</section>
