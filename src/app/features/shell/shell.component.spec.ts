@@ -143,9 +143,13 @@ describe('ShellComponent', () => {
   });
 
   describe('"Calificaciones" link', () => {
-    it('1.12a visible for student', () => {
+    it('1.12a visible for student and routes to /grades', () => {
       const fixture = setup(student);
       expect(textVisible(fixture, 'Calificaciones')).toBe(true);
+      const link = Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
+        (el.textContent ?? '').includes('Calificaciones')
+      );
+      expect(link?.getAttribute('href')).toBe('/grades');
     });
 
     it('1.12b absent for admin', () => {

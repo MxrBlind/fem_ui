@@ -35,7 +35,7 @@
         <a mat-list-item routerLink="/ciclo-actual" routerLinkActive="active" *hasRole="['admin']">Ciclo actual</a>
         <a mat-list-item routerLink="/inscripciones" routerLinkActive="active" *hasRole="['admin', 'teacher']">Inscripciones</a>
         <a mat-list-item routerLink="/ciclos" routerLinkActive="active" *hasRole="['admin']">Ciclos</a>
-        <a mat-list-item routerLink="" *hasRole="['student']">Calificaciones</a>
+        <a mat-list-item routerLink="/grades" routerLinkActive="active" *hasRole="['student']">Calificaciones</a>
       </ng-container>
 
       <ng-container *hasRole="['admin']">

@@ -1,0 +1,135 @@
+<section class="grades">
+  <header class="grades__header">
+    <h2 class="grades__title mat-headline-small" data-testid="grades-title">
+      Lista de calificaciones
+    </h2>
+  </header>
+
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando calificaciones" />
+  }
+
+  <mat-card class="grades__card">
+    <mat-form-field appearance="outline" class="grades__filter">
+      <mat-label>Filtrar</mat-label>
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        data-testid="grades-filter"
+        [value]="filterText()"
+        (input)="onFilterInput(($any($event.target)).value)"
+      />
+      @if (filterText().length > 0) {
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          aria-label="Limpiar filtro"
+          (click)="clearFilter()"
+        >
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </mat-form-field>
+
+    @if (!loading() && rows().length === 0) {
+      <div class="grades__empty">
+        <mat-icon>inbox</mat-icon>
+        <p class="mat-body-large">No hay calificaciones registradas.</p>
+      </div>
+    } @else {
+      <div class="grades__table-wrapper">
+        <table
+          mat-table
+          matSort
+          [dataSource]="dataSource"
+          class="grades__table"
+          data-testid="grades-table"
+        >
+          <ng-container matColumnDef="courseName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Curso</th>
+            <td mat-cell *matCellDef="let row">{{ row.courseName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="teacherName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Maestro</th>
+            <td mat-cell *matCellDef="let row">{{ row.teacherName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="cycleName">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Ciclo</th>
+            <td mat-cell *matCellDef="let row">{{ row.cycleName }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="startDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de inicio</th>
+            <td mat-cell *matCellDef="let row">{{ row.startDate | date:'dd/MM/yyyy' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="gradeLabel">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Calificación</th>
+            <td mat-cell *matCellDef="let row" data-testid="grade-cell">
+              {{ toGradeLabel(row) }}
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="certificate">
+            <th mat-header-cell *matHeaderCellDef>Certificado</th>
+            <td mat-cell *matCellDef="let row">
+              @if (isCertificateEnabled(row)) {
+                @if (downloadingEnrollmentId() === row.enrollmentId) {
+                  <mat-progress-spinner
+                    diameter="24"
+                    mode="indeterminate"
+                    data-testid="certificate-spinner"
+                    [attr.aria-label]="'Descargando certificado ' + row.enrollmentId"
+                  />
+                } @else {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    data-testid="certificate-btn"
+                    aria-label="Descargar certificado"
+                    matTooltip="Descargar certificado"
+                    [attr.aria-disabled]="false"
+                    (click)="onDownloadCertificate(row)"
+                  >
+                    <mat-icon>download</mat-icon>
+                  </button>
+                }
+              } @else {
+                <button
+                  mat-icon-button
+                  type="button"
+                  data-testid="certificate-btn-disabled"
+                  disabled
+                  aria-label="Certificado no disponible"
+                  aria-disabled="true"
+                  matTooltip="Certificado no disponible"
+                >
+                  <mat-icon>download</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            data-testid="grade-row"
+          ></tr>
+        </table>
+
+        <mat-paginator
+          [pageSizeOptions]="[10, 25, 50]"
+          [pageSize]="10"
+          showFirstLastButtons
+          aria-label="Paginación de calificaciones"
+        />
+      </div>
+    }
+  </mat-card>
+</section>
