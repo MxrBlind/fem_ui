@@ -1,0 +1,24 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+<mat-dialog-content>
+  <p class="mat-body-large">{{ message }}</p>
+  <p class="subject-delete-confirm__summary mat-body-medium">{{ summary }}</p>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button
+    mat-stroked-button
+    type="button"
+    data-testid="subject-delete-cancel"
+    (click)="onCancel()"
+  >
+    Cancelar
+  </button>
+  <button
+    mat-flat-button
+    color="warn"
+    type="button"
+    data-testid="subject-delete-confirm"
+    (click)="onConfirm()"
+  >
+    Eliminar
+  </button>
+</mat-dialog-actions>

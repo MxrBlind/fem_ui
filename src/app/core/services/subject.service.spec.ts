@@ -127,4 +127,21 @@ describe('SubjectService', () => {
       .flush('boom', { status: 500, statusText: 'Server Error' });
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
+
+  it('delete() issues DELETE /api/subject/{id} with no body and completes', async () => {
+    const promise = firstValueFrom(service.delete(42), { defaultValue: undefined });
+    const req = http.expectOne(`${environment.apiBaseUrl}/api/subject/42`);
+    expect(req.request.method).toBe('DELETE');
+    expect(req.request.body).toBeNull();
+    req.flush(null);
+    await expect(promise).resolves.toBeNull();
+  });
+
+  it('delete() propagates HTTP errors', async () => {
+    const promise = firstValueFrom(service.delete(99));
+    http
+      .expectOne(`${environment.apiBaseUrl}/api/subject/99`)
+      .flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
 });

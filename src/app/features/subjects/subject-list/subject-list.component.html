@@ -93,6 +93,7 @@
                   matTooltip="Editar"
                   aria-label="Editar materia"
                   data-testid="subject-edit-btn"
+                  [disabled]="deletingId() === row.id"
                   (click)="onEdit(row)"
                 >
                   <mat-icon>edit</mat-icon>
@@ -104,6 +105,7 @@
                   matTooltip="Eliminar"
                   aria-label="Eliminar materia"
                   data-testid="subject-delete-btn"
+                  [disabled]="deletingId() === row.id"
                   (click)="onDelete(row)"
                 >
                   <mat-icon>delete</mat-icon>

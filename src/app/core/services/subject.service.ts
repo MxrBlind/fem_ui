@@ -25,4 +25,8 @@ export class SubjectService {
   update(id: number, payload: UpdateSubjectRequest): Observable<SubjectDto> {
     return this.http.put<SubjectDto>(`${this.baseUrl}/${id}?includeDependencies=true`, payload);
   }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }
