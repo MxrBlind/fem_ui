@@ -1,0 +1,53 @@
+:host {
+  display: block;
+  padding: 16px;
+  color: var(--mat-sys-on-surface);
+}
+
+.grades__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.grades__title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.grades__card {
+  display: block;
+  background: var(--mat-sys-surface-container);
+}
+
+.grades__filter {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.grades__table-wrapper {
+  display: block;
+  overflow-x: auto;
+}
+
+.grades__table {
+  width: 100%;
+}
+
+.grades__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}
