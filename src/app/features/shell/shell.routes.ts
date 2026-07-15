@@ -66,6 +66,13 @@ export const SHELL_ROUTES: Routes = [
       ),
   },
   {
+    path: 'mi-perfil',
+    loadComponent: () =>
+      import('../profile/profile-edit/profile-edit.component').then(
+        (m) => m.ProfileEditComponent
+      ),
+  },
+  {
     path: 'subjects',
     canMatch: [roleGuard],
     data: { roles: ['admin'] },

@@ -1,0 +1,133 @@
+<mat-card class="profile-edit">
+  <mat-card-header>
+    <mat-card-title>Mi perfil: {{ username() }}</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (loading()) {
+      <div class="profile-edit__loading">
+        <mat-progress-spinner mode="indeterminate" diameter="48" />
+      </div>
+    } @else if (!loadFailed()) {
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="profile-edit__form">
+        <mat-form-field appearance="outline">
+          <mat-label>Nombre</mat-label>
+          <input matInput type="text" formControlName="name" maxlength="100" autocomplete="off" />
+          @if (form.controls.name.touched && form.controls.name.hasError('required')) {
+            <mat-error>El nombre es requerido.</mat-error>
+          } @else if (form.controls.name.hasError('maxlength')) {
+            <mat-error>El nombre no puede exceder 100 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Apellido paterno</mat-label>
+          <input matInput type="text" formControlName="parentLastName" maxlength="100" autocomplete="off" />
+          @if (form.controls.parentLastName.touched && form.controls.parentLastName.hasError('required')) {
+            <mat-error>El apellido paterno es requerido.</mat-error>
+          } @else if (form.controls.parentLastName.hasError('maxlength')) {
+            <mat-error>El apellido paterno no puede exceder 100 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Apellido materno</mat-label>
+          <input matInput type="text" formControlName="motherLastName" maxlength="100" autocomplete="off" />
+          @if (form.controls.motherLastName.touched && form.controls.motherLastName.hasError('required')) {
+            <mat-error>El apellido materno es requerido.</mat-error>
+          } @else if (form.controls.motherLastName.hasError('maxlength')) {
+            <mat-error>El apellido materno no puede exceder 100 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Fecha de nacimiento</mat-label>
+          <input
+            matInput
+            formControlName="birthDate"
+            [matDatepicker]="birthPicker"
+            autocomplete="off"
+          />
+          <mat-datepicker-toggle
+            matSuffix
+            [for]="birthPicker"
+            aria-label="Abrir selector de fecha de nacimiento"
+          />
+          <mat-datepicker #birthPicker />
+          @if (form.controls.birthDate.touched && form.controls.birthDate.hasError('required')) {
+            <mat-error>La fecha de nacimiento es requerida.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Email</mat-label>
+          <input matInput type="email" formControlName="email" maxlength="50" autocomplete="off" />
+          @if (form.controls.email.touched && form.controls.email.hasError('required')) {
+            <mat-error>El email es requerido.</mat-error>
+          } @else if (form.controls.email.hasError('email')) {
+            <mat-error>El email no es válido.</mat-error>
+          } @else if (form.controls.email.hasError('maxlength')) {
+            <mat-error>El email no puede exceder 50 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Teléfono</mat-label>
+          <input matInput type="text" formControlName="phone" maxlength="50" autocomplete="off" />
+          @if (form.controls.phone.touched && form.controls.phone.hasError('required')) {
+            <mat-error>El teléfono es requerido.</mat-error>
+          } @else if (form.controls.phone.hasError('maxlength')) {
+            <mat-error>El teléfono no puede exceder 50 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Dirección</mat-label>
+          <input matInput type="text" formControlName="address" maxlength="200" autocomplete="off" />
+          @if (form.controls.address.touched && form.controls.address.hasError('required')) {
+            <mat-error>La dirección es requerida.</mat-error>
+          } @else if (form.controls.address.hasError('maxlength')) {
+            <mat-error>La dirección no puede exceder 200 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Iglesia</mat-label>
+          <input matInput type="text" formControlName="church" maxlength="200" autocomplete="off" />
+          @if (form.controls.church.touched && form.controls.church.hasError('required')) {
+            <mat-error>La iglesia es requerida.</mat-error>
+          } @else if (form.controls.church.hasError('maxlength')) {
+            <mat-error>La iglesia no puede exceder 200 caracteres.</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="profile-edit__actions">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="true"
+            matTooltip="Próximamente"
+            (click)="onChangePassword()"
+          >
+            Cambiar password
+          </button>
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="form.invalid || saving() || loadFailed()"
+          >
+            @if (saving()) {
+              <mat-progress-spinner
+                mode="indeterminate"
+                diameter="18"
+                class="profile-edit__spinner"
+              />
+            }
+            Guardar
+          </button>
+        </div>
+      </form>
+    }
+  </mat-card-content>
+</mat-card>

@@ -42,6 +42,10 @@ export class ShellComponent {
   }
 
   onProfileAction(action: string): void {
+    if (action === 'perfil') {
+      void this.router.navigate(['/mi-perfil']);
+      return;
+    }
     console.warn(`Not implemented yet: ${action}`);
   }
 
