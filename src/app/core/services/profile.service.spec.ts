@@ -71,4 +71,41 @@ describe('ProfileService', () => {
       .flush('boom', { status: 500, statusText: 'Server Error' });
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
+
+  it('changePassword() PUTs /api/user/{id}/profile/password with the payload and no Authorization header set by the service', async () => {
+    const promise = firstValueFrom(
+      service.changePassword(42, {
+        oldPassword: 'old',
+        newPassword: 'newSecret1',
+      })
+    );
+
+    const req = http.expectOne(
+      `${environment.apiBaseUrl}/api/user/42/profile/password`
+    );
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({
+      oldPassword: 'old',
+      newPassword: 'newSecret1',
+    });
+    expect(req.request.headers.has('Authorization')).toBe(false);
+
+    req.flush(null);
+    await expect(promise).resolves.toBeNull();
+  });
+
+  it('changePassword() propagates HTTP errors', async () => {
+    const promise = firstValueFrom(
+      service.changePassword(42, {
+        oldPassword: 'old',
+        newPassword: 'newSecret1',
+      })
+    );
+    http
+      .expectOne(
+        `${environment.apiBaseUrl}/api/user/42/profile/password`
+      )
+      .flush('boom', { status: 400, statusText: 'Bad Request' });
+    await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+  });
 });

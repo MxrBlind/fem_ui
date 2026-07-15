@@ -18,15 +18,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ProfileDto, UserDto } from '@core/models/auth.model';
 import { AuthService } from '@core/services/auth.service';
 import { ProfileService } from '@core/services/profile.service';
+import { ChangePasswordComponent } from '@features/profile/change-password/change-password.component';
 import {
   nonBlankValidator,
   parseIsoDate,
@@ -51,7 +52,6 @@ export const ERROR_MESSAGE = 'Error al actualizar el perfil';
     MatNativeDateModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatTooltipModule,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './profile-edit.component.html',
@@ -62,6 +62,7 @@ export class ProfileEditComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly profileService = inject(ProfileService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly user = signal<UserDto | null>(null);
@@ -182,7 +183,11 @@ export class ProfileEditComponent implements OnInit {
   }
 
   onChangePassword(): void {
-    // TODO: implement in follow-up ticket (Cambiar password).
+    this.dialog.open(ChangePasswordComponent, {
+      width: '480px',
+      autoFocus: 'first-tabbable',
+      restoreFocus: true,
+    });
   }
 
   private prefillForm(profile: ProfileDto | undefined): void {

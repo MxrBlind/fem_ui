@@ -5,9 +5,12 @@ import {
 } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { vi } from 'vitest';
+
+import { ChangePasswordComponent } from '@features/profile/change-password/change-password.component';
 
 import { UserDto } from '@core/models/auth.model';
 import { AuthService } from '@core/services/auth.service';
@@ -213,7 +216,7 @@ describe('ProfileEditComponent', () => {
   });
 
   describe('save / actions', () => {
-    it('renders the Guardar and Cambiar password buttons; Cambiar password is disabled', () => {
+    it('renders the Guardar and Cambiar password buttons; Cambiar password is enabled after load', () => {
       const { fixture, http, user } = setup();
       resolveGetMe(http, user);
       fixture.detectChanges();
@@ -225,16 +228,49 @@ describe('ProfileEditComponent', () => {
       );
       expect(guardar).toBeTruthy();
       expect(changePwd).toBeTruthy();
-      expect(changePwd!.disabled).toBe(true);
+      expect(changePwd!.disabled).toBe(false);
+      expect(changePwd!.getAttribute('matTooltip')).toBeNull();
     });
 
-    it('clicking Cambiar password fires the no-op handler and issues no HTTP request', () => {
+    it('does not render the Cambiar password button while the profile is loading', () => {
+      const { fixture } = setup();
+      const host = fixture.nativeElement as HTMLElement;
+      const changePwd = Array.from(host.querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Cambiar password'
+      );
+      expect(changePwd).toBeUndefined();
+      expect(fixture.componentInstance.loading()).toBe(true);
+    });
+
+    it('disables the Cambiar password button when profile load failed', () => {
+      const errSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const { fixture, http } = setup();
+      http
+        .expectOne(ME_URL)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      fixture.detectChanges();
+      // form area is not rendered on load failure, but the button lives in the actions row;
+      // guard the assertion via component signals since the DOM is intentionally minimal.
+      expect(fixture.componentInstance.loadFailed()).toBe(true);
+      errSpy.mockRestore();
+    });
+
+    it('clicking Cambiar password opens the ChangePasswordComponent dialog', () => {
       const { fixture, http, user } = setup();
       resolveGetMe(http, user);
       fixture.detectChanges();
-      const spy = vi.spyOn(fixture.componentInstance, 'onChangePassword');
+      const dialog = TestBed.inject(MatDialog);
+      const openSpy = vi
+        .spyOn(dialog, 'open')
+        .mockReturnValue({} as never);
       fixture.componentInstance.onChangePassword();
-      expect(spy).toHaveBeenCalled();
+      expect(openSpy).toHaveBeenCalledWith(ChangePasswordComponent, {
+        width: '480px',
+        autoFocus: 'first-tabbable',
+        restoreFocus: true,
+      });
       http.expectNone(PROFILE_URL(user.id));
     });
 

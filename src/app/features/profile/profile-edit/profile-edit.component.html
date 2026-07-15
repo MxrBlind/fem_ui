@@ -105,8 +105,7 @@
           <button
             mat-stroked-button
             type="button"
-            [disabled]="true"
-            matTooltip="Próximamente"
+            [disabled]="loading() || loadFailed()"
             (click)="onChangePassword()"
           >
             Cambiar password
