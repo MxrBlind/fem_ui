@@ -288,7 +288,7 @@ describe('ShellComponent', () => {
       expect(salir!.getAttribute('aria-label')).toBe('Cerrar sesión');
     });
 
-    it('3.6 Mi perfil click still routes through onProfileAction("perfil") and does not navigate', () => {
+    it('3.6 Mi perfil click routes through onProfileAction("perfil") and navigates to /mi-perfil', () => {
       const fixture = setup(admin);
       const router = TestBed.inject(Router);
       const navSpy = vi
@@ -303,7 +303,7 @@ describe('ShellComponent', () => {
       findMenuItem('Mi perfil')!.click();
 
       expect(onProfileActionSpy).toHaveBeenCalledWith('perfil');
-      expect(navSpy).not.toHaveBeenCalled();
+      expect(navSpy).toHaveBeenCalledWith(['/mi-perfil']);
     });
   });
 });
