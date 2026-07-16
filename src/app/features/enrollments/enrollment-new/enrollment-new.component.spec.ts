@@ -6,7 +6,11 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DEFAULT_OPTIONS,
+  MatDialog,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { environment } from '../../../../environments/environment';
@@ -299,6 +303,60 @@ describe('EnrollmentNewComponent', () => {
       fixture.componentInstance.onCancel();
       expect(dialogRef.close).toHaveBeenCalledWith();
       http.expectNone(`${environment.apiBaseUrl}/api/enrollment`);
+    });
+  });
+
+  describe('dialog focus behavior [FEM-19]', () => {
+    it('does not open the studentId autocomplete panel when the dialog opens', async () => {
+      TestBed.configureTestingModule({
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideAnimationsAsync(),
+          {
+            provide: MAT_DIALOG_DEFAULT_OPTIONS,
+            useValue: { autoFocus: 'dialog', restoreFocus: true },
+          },
+        ],
+      });
+
+      const dialog = TestBed.inject(MatDialog);
+      const http = TestBed.inject(HttpTestingController);
+      const ref = dialog.open(EnrollmentNewComponent);
+
+      await new Promise((r) => setTimeout(r));
+
+      http
+        .expectOne(
+          (r) =>
+            r.url === `${environment.apiBaseUrl}/api/user` &&
+            r.params.get('role') === 'ROLE_STUDENT'
+        )
+        .flush([makeStudent(1)]);
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/cycle/current`)
+        .flush(cycle);
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/course/cycle/${cycle.id}`)
+        .flush([makeCourse(10)]);
+
+      await new Promise((r) => setTimeout(r));
+
+      const autocompletePanel = document.querySelector(
+        '.mat-mdc-autocomplete-panel'
+      );
+      expect(autocompletePanel).toBeNull();
+
+      const container = document.querySelector('mat-dialog-container');
+      expect(container).not.toBeNull();
+      const active = document.activeElement;
+      expect(
+        container === active || container?.contains(active as Node)
+      ).toBe(true);
+      expect((active as HTMLElement | null)?.tagName).not.toBe('INPUT');
+
+      ref.close();
+      await new Promise((r) => setTimeout(r));
     });
   });
 });
