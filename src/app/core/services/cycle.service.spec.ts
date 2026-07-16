@@ -88,6 +88,7 @@ describe('CycleService', () => {
       description: '2027-A',
       startDate: '2027-01-15',
       endDate: '2027-06-15',
+      current: false,
       principal: { id: 42 },
     };
     const created: CycleDto = {
@@ -112,6 +113,7 @@ describe('CycleService', () => {
       description: '2027-A',
       startDate: '2027-01-15',
       endDate: '2027-06-15',
+      current: false,
       principal: { id: 42 },
     };
     const promise = firstValueFrom(service.create(payload));
