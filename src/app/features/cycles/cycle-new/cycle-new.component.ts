@@ -183,6 +183,7 @@ export class CycleNewComponent implements OnInit {
       description: description.trim(),
       startDate: toIsoDateString(startDate),
       endDate: toIsoDateString(endDate),
+      current: false,
       principal: { id: principalId },
     };
 

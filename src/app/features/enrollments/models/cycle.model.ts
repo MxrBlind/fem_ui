@@ -14,6 +14,7 @@ export interface CreateCycleRequest {
   description: string;
   startDate: string;
   endDate: string;
+  current: boolean;
   principal: { id: number };
 }
 
