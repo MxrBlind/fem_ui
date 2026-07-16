@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
@@ -9,6 +9,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { HasRoleDirective } from '@core/auth/has-role.directive';
+import { RoleLabelPipe } from '@core/auth/role-label.pipe';
 import { AuthService } from '@core/services/auth.service';
 
 @Component({
@@ -26,6 +27,7 @@ import { AuthService } from '@core/services/auth.service';
     MatListModule,
     MatDividerModule,
     HasRoleDirective,
+    RoleLabelPipe,
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
@@ -36,6 +38,20 @@ export class ShellComponent {
 
   readonly user = this.auth.currentUser;
   readonly sidenavOpen = signal(true);
+
+  readonly initial = computed(() => {
+    const u = this.user();
+    const source = u?.name ?? u?.username ?? '';
+    return source.charAt(0).toUpperCase();
+  });
+
+  readonly fullName = computed(() => {
+    const u = this.user();
+    if (!u) return '';
+    if (u.name && u.parentLastName) return `${u.name} ${u.parentLastName}`;
+    if (u.name) return u.name;
+    return u.username;
+  });
 
   toggleSidenav(): void {
     this.sidenavOpen.update((open) => !open);

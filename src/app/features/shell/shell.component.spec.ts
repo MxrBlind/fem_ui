@@ -8,7 +8,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { AuthUser } from '../../core/auth/rbac';
 import { ShellComponent } from './shell.component';
 
-const admin: AuthUser = { id: 1, username: 'admin_user', role: 'admin', rawRole: 'admin' };
+const admin: AuthUser = {
+  id: 1,
+  username: 'admin_user',
+  role: 'admin',
+  rawRole: 'admin',
+  name: 'Marcos',
+  parentLastName: 'Reyes'
+};
 const teacher: AuthUser = { id: 2, username: 'teacher_user', role: 'teacher', rawRole: 'teacher' };
 const student: AuthUser = { id: 3, username: 'student_user', role: 'student', rawRole: 'student' };
 
@@ -208,6 +215,106 @@ describe('ShellComponent', () => {
     it('1.13c absent for student', () => {
       const fixture = setup(student);
       expect(textVisible(fixture, 'Catálogos')).toBe(false);
+    });
+  });
+
+  describe('Sidebar profile area (FEM-54)', () => {
+    it('renders avatar initial from profile.name', () => {
+      const fixture = setup(admin);
+      const avatar = q(fixture, '.sidebar-profile__avatar');
+      expect(avatar?.textContent?.trim()).toBe('M');
+    });
+
+    it('avatar falls back to username initial when profile.name is absent', () => {
+      const fixture = setup(teacher);
+      const avatar = q(fixture, '.sidebar-profile__avatar');
+      expect(avatar?.textContent?.trim()).toBe('T');
+    });
+
+    it('avatar renders empty when neither name nor username is available', () => {
+      const ghost: AuthUser = { id: 9, username: '', role: 'admin', rawRole: 'admin' };
+      const fixture = setup(ghost);
+      const avatar = q(fixture, '.sidebar-profile__avatar');
+      expect(avatar?.textContent?.trim()).toBe('');
+    });
+
+    it('avatar carries aria-hidden="true"', () => {
+      const fixture = setup(admin);
+      const avatar = q(fixture, '.sidebar-profile__avatar');
+      expect(avatar?.getAttribute('aria-hidden')).toBe('true');
+    });
+
+    it('renders full name (name + parentLastName) bold when both present', () => {
+      const fixture = setup(admin);
+      const name = q(fixture, '.sidebar-profile__name');
+      expect(name?.textContent?.trim()).toBe('Marcos Reyes');
+    });
+
+    it('renders name alone when parentLastName missing', () => {
+      const nameOnly: AuthUser = { ...admin, parentLastName: undefined };
+      const fixture = setup(nameOnly);
+      const name = q(fixture, '.sidebar-profile__name');
+      expect(name?.textContent?.trim()).toBe('Marcos');
+    });
+
+    it('renders username when both name and parentLastName missing', () => {
+      const fixture = setup(teacher);
+      const name = q(fixture, '.sidebar-profile__name');
+      expect(name?.textContent?.trim()).toBe('teacher_user');
+    });
+
+    it('renders Spanish role label for admin', () => {
+      const fixture = setup(admin);
+      const role = q(fixture, '.sidebar-profile__role');
+      expect(role?.textContent?.trim()).toBe('Administrador');
+    });
+
+    it('renders Spanish role label for teacher', () => {
+      const fixture = setup(teacher);
+      const role = q(fixture, '.sidebar-profile__role');
+      expect(role?.textContent?.trim()).toBe('Maestro');
+    });
+
+    it('renders Spanish role label for student', () => {
+      const fixture = setup(student);
+      const role = q(fixture, '.sidebar-profile__role');
+      expect(role?.textContent?.trim()).toBe('Estudiante');
+    });
+
+    it('renders Spanish role label for principal', () => {
+      const principal: AuthUser = {
+        id: 4,
+        username: 'p',
+        role: 'principal',
+        rawRole: 'principal'
+      };
+      const fixture = setup(principal);
+      const role = q(fixture, '.sidebar-profile__role');
+      expect(role?.textContent?.trim()).toBe('Director');
+    });
+
+    it('"Mi perfil" is an anchor with routerLink="/mi-perfil" and aria-label', () => {
+      const fixture = setup(admin);
+      const link = q(fixture, 'a.sidebar-profile__link') as HTMLAnchorElement | null;
+      expect(link).toBeTruthy();
+      expect(link!.getAttribute('href')).toBe('/mi-perfil');
+      expect(link!.getAttribute('aria-label')).toBe('Ir a mi perfil');
+    });
+
+    it('avatar, name and role are not interactive (no button/anchor)', () => {
+      const fixture = setup(admin);
+      const avatar = q(fixture, '.sidebar-profile__avatar');
+      const name = q(fixture, '.sidebar-profile__name');
+      const role = q(fixture, '.sidebar-profile__role');
+      for (const el of [avatar, name, role]) {
+        expect(el?.tagName).not.toBe('A');
+        expect(el?.tagName).not.toBe('BUTTON');
+      }
+    });
+
+    it('block is not rendered when currentUser is null', () => {
+      const fixture = setup(null);
+      expect(q(fixture, '.sidebar-profile')).toBeNull();
     });
   });
 

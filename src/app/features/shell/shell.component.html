@@ -28,6 +28,22 @@
 
 <mat-sidenav-container class="sidenav-container">
   <mat-sidenav mode="side" [opened]="sidenavOpen()">
+    @if (user(); as u) {
+      <div class="sidebar-profile">
+        <span class="sidebar-profile__avatar" aria-hidden="true">{{ initial() }}</span>
+        <div class="sidebar-profile__info">
+          <p class="sidebar-profile__name">{{ fullName() }}</p>
+          <p class="sidebar-profile__role">{{ u.role | roleLabel }}</p>
+          <a
+            class="sidebar-profile__link"
+            routerLink="/mi-perfil"
+            aria-label="Ir a mi perfil"
+          >Mi perfil</a>
+        </div>
+      </div>
+      <mat-divider />
+    }
+
     <mat-nav-list>
       <ng-container *hasRole="['admin', 'teacher', 'student']">
         <p class="nav-section-header">Ciclo escolar</p>
