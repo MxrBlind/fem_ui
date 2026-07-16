@@ -110,7 +110,14 @@ export class AuthService {
 
   private toAuthUser(dto: UserDto): AuthUser {
     const { role, rawRole } = normalizeRole(dto.role?.name);
-    return { id: dto.id, username: dto.username, role, rawRole };
+    return {
+      id: dto.id,
+      username: dto.username,
+      role,
+      rawRole,
+      name: dto.profile?.name,
+      parentLastName: dto.profile?.parentLastName
+    };
   }
 
   /**

@@ -72,6 +72,64 @@ mat-sidenav {
   }
 }
 
+$profile-avatar-bg: #2f6feb;
+$profile-avatar-fg: #0b2a6b;
+
+.sidebar-profile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 12px;
+
+  &__avatar {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: $profile-avatar-bg;
+    color: $profile-avatar-fg;
+    font-weight: 700;
+    font-size: 1.125rem;
+    line-height: 1;
+    user-select: none;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__name {
+    margin: 0;
+    font-weight: 700;
+    color: var(--mat-sys-on-surface);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__role {
+    margin: 2px 0 4px;
+    font-size: 0.875rem;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &__link {
+    font-size: 0.875rem;
+    color: var(--mat-sys-primary);
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
+  }
+}
+
 .nav-section-header {
   padding: 12px 16px 4px;
   font-size: 0.75rem;

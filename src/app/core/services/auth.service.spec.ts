@@ -132,6 +132,40 @@ describe('AuthService', () => {
     await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
   });
 
+  it('exposes profile.name and profile.parentLastName on currentUser after login', async () => {
+    const promise = firstValueFrom(service.login({ username: 'alice', password: 'p' }));
+    httpMock.expectOne(TOKEN_URL).flush({ token: 'tok', type: 'Bearer', expirationDate: 'e' });
+    httpMock
+      .expectOne(ME_URL)
+      .flush(userDto({ profile: { name: 'Marcos', parentLastName: 'Reyes' } }, 'admin'));
+    await promise;
+
+    expect(service.currentUser()?.name).toBe('Marcos');
+    expect(service.currentUser()?.parentLastName).toBe('Reyes');
+  });
+
+  it('exposes profile.name and profile.parentLastName on refreshProfile (bootstrap path)', async () => {
+    tokenStorage.saveToken('tok', '2099-01-01T00:00:00Z');
+    const p = service.refreshProfile();
+    httpMock
+      .expectOne(ME_URL)
+      .flush(userDto({ profile: { name: 'Ana', parentLastName: 'García' } }, 'teacher'));
+    await p;
+
+    expect(service.currentUser()?.name).toBe('Ana');
+    expect(service.currentUser()?.parentLastName).toBe('García');
+  });
+
+  it('leaves name and parentLastName undefined when profile is absent', async () => {
+    const promise = firstValueFrom(service.login({ username: 'a', password: 'b' }));
+    httpMock.expectOne(TOKEN_URL).flush({ token: 'tok', type: 'Bearer', expirationDate: 'e' });
+    httpMock.expectOne(ME_URL).flush(userDto({}, 'admin'));
+    await promise;
+
+    expect(service.currentUser()?.name).toBeUndefined();
+    expect(service.currentUser()?.parentLastName).toBeUndefined();
+  });
+
   it('refreshProfile() de-duplicates concurrent callers (single /me)', async () => {
     tokenStorage.saveToken('tok', '2099-01-01T00:00:00Z');
     const p1 = service.refreshProfile();

@@ -23,6 +23,8 @@ export interface AuthUser {
   username: string;
   role: Role | null;
   rawRole: string | null;
+  name?: string;
+  parentLastName?: string;
 }
 
 export function normalizeRole(raw: string | null | undefined): {
