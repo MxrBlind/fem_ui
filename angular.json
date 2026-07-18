@@ -37,7 +37,7 @@
           },
           "configurations": {
             "production": {
-              "baseHref": "https://mxrblind.github.io/fem_fe/",
+              "baseHref": "/fem_ui/",
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
