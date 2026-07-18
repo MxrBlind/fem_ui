@@ -10,7 +10,7 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$violet-palette,
+        primary: mat.$azure-palette,
         tertiary: mat.$blue-palette,
       ),
       typography: Roboto,
@@ -18,16 +18,16 @@ html {
     )
   );
 
-  // Berry-inspired look: deep purple primary, blue accent, white surfaces
+  // Dark blue-based look: #084096 primary, blue accent, white surfaces
   // over a light grey-blue app background.
   @include mat.theme-overrides(
     (
-      primary: #673ab7,
+      primary: #084096,
       on-primary: #ffffff,
-      primary-container: #ede7f6,
-      on-primary-container: #5e35b1,
-      secondary-container: #ede7f6,
-      on-secondary-container: #5e35b1,
+      primary-container: #d8e2ff,
+      on-primary-container: #00306e,
+      secondary-container: #dbe7ff,
+      on-secondary-container: #0a3d80,
       tertiary: #2196f3,
       on-tertiary: #ffffff,
       tertiary-container: #e3f2fd,
