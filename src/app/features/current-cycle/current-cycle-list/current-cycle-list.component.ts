@@ -31,6 +31,11 @@ import { CourseService } from '@core/services/course.service';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
 import { CourseDto, CourseRow } from '@features/enrollments/models/enrollment.model';
+import {
+  ExcelExportColumn,
+  ExcelExportConfig,
+  ExportToExcelButtonComponent,
+} from '@shared/table-export';
 import { CourseDeleteConfirmComponent } from '../course-delete-confirm/course-delete-confirm.component';
 import { CourseEditComponent } from '../course-edit/course-edit.component';
 import { CourseNewComponent } from '../course-new/course-new.component';
@@ -58,6 +63,7 @@ export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
     MatTableModule,
     MatTooltipModule,
     HasRoleDirective,
+    ExportToExcelButtonComponent,
   ],
   templateUrl: './current-cycle-list.component.html',
   styleUrl: './current-cycle-list.component.scss',
@@ -91,6 +97,23 @@ export class CurrentCycleListComponent implements OnInit, AfterViewInit {
   });
 
   readonly dataSource = new MatTableDataSource<CourseRow>([]);
+
+  readonly excelColumns: ExcelExportColumn<CourseRow>[] = [
+    { header: 'ID', key: 'id', value: (r) => r.id, width: 8 },
+    { header: 'Nombre del curso', key: 'subjectDescription', value: (r) => r.subjectDescription },
+    { header: 'Créditos', key: 'credits', value: (r) => r.credits },
+    { header: 'Profesor', key: 'teacherFullName', value: (r) => r.teacherFullName },
+    { header: 'Categoría', key: 'categoryTitle', value: (r) => r.categoryTitle },
+    { header: 'Nivel', key: 'levelTitle', value: (r) => r.levelTitle },
+  ];
+
+  readonly excelConfig = (): ExcelExportConfig<CourseRow> => ({
+    rows: this.dataSource.filteredData,
+    columns: this.excelColumns,
+    entitySlug: 'current-cycle',
+    sheetName: 'Ciclo actual',
+    filteredBy: this.filterText(),
+  });
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;

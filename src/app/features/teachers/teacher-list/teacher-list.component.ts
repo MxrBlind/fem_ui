@@ -28,6 +28,11 @@ import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { UserDto } from '@core/models/auth.model';
 import { TeacherService } from '@core/services/teacher.service';
 import {
+  ExcelExportColumn,
+  ExcelExportConfig,
+  ExportToExcelButtonComponent,
+} from '@shared/table-export';
+import {
   TeacherEditComponent,
   TeacherEditDialogData,
 } from '../teacher-edit/teacher-edit.component';
@@ -72,6 +77,7 @@ export interface TeacherRow {
     MatSortModule,
     MatTableModule,
     MatTooltipModule,
+    ExportToExcelButtonComponent,
   ],
   templateUrl: './teacher-list.component.html',
   styleUrl: './teacher-list.component.scss',
@@ -99,6 +105,24 @@ export class TeacherListComponent implements OnInit, AfterViewInit {
   readonly deletingId = signal<number | null>(null);
 
   readonly dataSource = new MatTableDataSource<TeacherRow>([]);
+
+  readonly excelColumns: ExcelExportColumn<TeacherRow>[] = [
+    { header: 'ID', key: 'id', value: (r) => r.id, width: 8 },
+    { header: 'Nombre(s)', key: 'name', value: (r) => this.exportCell(r.name) },
+    { header: 'Paterno', key: 'parentLastName', value: (r) => this.exportCell(r.parentLastName) },
+    { header: 'Materno', key: 'motherLastName', value: (r) => this.exportCell(r.motherLastName) },
+    { header: 'Email', key: 'email', value: (r) => this.exportCell(r.email) },
+    { header: 'Teléfono', key: 'phone', value: (r) => this.exportCell(r.phone) },
+    { header: 'Iglesia', key: 'church', value: (r) => this.exportCell(r.church) },
+  ];
+
+  readonly excelConfig = (): ExcelExportConfig<TeacherRow> => ({
+    rows: this.dataSource.filteredData,
+    columns: this.excelColumns,
+    entitySlug: 'teachers',
+    sheetName: 'Maestros',
+    filteredBy: this.filterText(),
+  });
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;
@@ -290,5 +314,9 @@ export class TeacherListComponent implements OnInit, AfterViewInit {
   private fallback(value: string | null | undefined): string {
     if (value === null || value === undefined) return TEACHER_FALLBACK;
     return value.trim().length === 0 ? TEACHER_FALLBACK : value;
+  }
+
+  private exportCell(value: string): string {
+    return value === TEACHER_FALLBACK ? '' : value;
   }
 }

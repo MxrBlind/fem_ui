@@ -17,6 +17,12 @@
   font-weight: 600;
 }
 
+.enrollment-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .enrollment-list__card {
   display: block;
   background: var(--mat-sys-surface-container);

@@ -29,6 +29,11 @@ import { finalize } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { GradeService } from '@core/services/grade.service';
 import { GradeDto, GradeRow } from './models/grade.model';
+import {
+  ExcelExportColumn,
+  ExcelExportConfig,
+  ExportToExcelButtonComponent,
+} from '@shared/table-export';
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar las calificaciones. Intenta de nuevo más tarde.';
@@ -73,6 +78,7 @@ export function isCertificateEnabled(row: Pick<GradeRow, 'active' | 'grade'>): b
     MatSortModule,
     MatTableModule,
     MatTooltipModule,
+    ExportToExcelButtonComponent,
   ],
   templateUrl: './grades.component.html',
   styleUrl: './grades.component.scss',
@@ -101,6 +107,26 @@ export class GradesComponent implements OnInit, AfterViewInit {
   readonly studentId = computed<number | null>(() => this.authService.currentUser()?.id ?? null);
 
   readonly dataSource = new MatTableDataSource<GradeRow>([]);
+
+  readonly excelColumns: ExcelExportColumn<GradeRow>[] = [
+    { header: 'Curso', key: 'courseName', value: (r) => r.courseName },
+    { header: 'Maestro', key: 'teacherName', value: (r) => r.teacherName },
+    { header: 'Ciclo', key: 'cycleName', value: (r) => r.cycleName },
+    {
+      header: 'Fecha de inicio',
+      key: 'startDate',
+      value: (r) => this.datePipe.transform(r.startDate, 'dd/MM/yyyy') ?? '',
+    },
+    { header: 'Calificación', key: 'gradeLabel', value: (r) => toGradeLabel(r) },
+  ];
+
+  readonly excelConfig = (): ExcelExportConfig<GradeRow> => ({
+    rows: this.dataSource.filteredData,
+    columns: this.excelColumns,
+    entitySlug: 'grades',
+    sheetName: 'Calificaciones',
+    filteredBy: this.filterText(),
+  });
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;

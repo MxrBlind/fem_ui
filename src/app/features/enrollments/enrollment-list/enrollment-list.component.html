@@ -2,16 +2,23 @@
   <header class="enrollment-list__header">
     <h2 class="enrollment-list__title mat-headline-small">{{ title() }}</h2>
 
-    <button
-      *hasRole="['admin']"
-      mat-flat-button
-      color="primary"
-      type="button"
-      (click)="onCreate()"
-    >
-      <mat-icon>add</mat-icon>
-      Nueva inscripción
-    </button>
+    <div class="enrollment-list__actions">
+      <button
+        *hasRole="['admin']"
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="onCreate()"
+      >
+        <mat-icon>add</mat-icon>
+        Nueva inscripción
+      </button>
+      <app-export-to-excel-button
+        data-testid="enrollments-export-btn"
+        [configFactory]="excelConfig"
+        [disabled]="loading()"
+      />
+    </div>
   </header>
 
   @if (loading()) {

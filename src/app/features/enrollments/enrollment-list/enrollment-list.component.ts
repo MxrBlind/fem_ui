@@ -35,6 +35,11 @@ import { EnrollmentDeleteConfirmComponent } from '../enrollment-delete-confirm/e
 import { CycleDto } from '../models/cycle.model';
 import { EnrollmentDto, EnrollmentRow } from '../models/enrollment.model';
 import {EnrollmentNewComponent} from '@features/enrollments/enrollment-new/enrollment-new.component';
+import {
+  ExcelExportColumn,
+  ExcelExportConfig,
+  ExportToExcelButtonComponent,
+} from '@shared/table-export';
 
 const LOAD_ERROR_MESSAGE = 'No se pudieron cargar las inscripciones. Intenta de nuevo más tarde.';
 export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
@@ -58,6 +63,7 @@ export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
     MatTooltipModule,
     MatDialogModule,
     HasRoleDirective,
+    ExportToExcelButtonComponent,
   ],
   templateUrl: './enrollment-list.component.html',
   styleUrl: './enrollment-list.component.scss',
@@ -83,6 +89,23 @@ export class EnrollmentListComponent implements OnInit, AfterViewInit {
   });
 
   readonly dataSource = new MatTableDataSource<EnrollmentRow>([]);
+
+  readonly excelColumns: ExcelExportColumn<EnrollmentRow>[] = [
+    { header: 'ID', key: 'id', value: (r) => r.id, width: 8 },
+    { header: 'Nombre', key: 'fullName', value: (r) => r.fullName },
+    { header: 'Iglesia', key: 'church', value: (r) => r.church ?? '' },
+    { header: 'Materia', key: 'subject', value: (r) => r.subject },
+    { header: 'Categoría', key: 'category', value: (r) => r.category },
+    { header: 'Calificación', key: 'grade', value: (r) => r.grade },
+  ];
+
+  readonly excelConfig = (): ExcelExportConfig<EnrollmentRow> => ({
+    rows: this.dataSource.filteredData,
+    columns: this.excelColumns,
+    entitySlug: 'enrollments',
+    sheetName: 'Inscripciones',
+    filteredBy: this.filterText(),
+  });
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;

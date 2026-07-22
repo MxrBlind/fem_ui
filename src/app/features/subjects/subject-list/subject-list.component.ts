@@ -27,6 +27,11 @@ import { catchError, filter, finalize, of, switchMap } from 'rxjs';
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { SubjectService } from '@core/services/subject.service';
 import { SubjectDto } from '@features/enrollments/models/enrollment.model';
+import {
+  ExcelExportColumn,
+  ExcelExportConfig,
+  ExportToExcelButtonComponent,
+} from '@shared/table-export';
 import { SubjectNewComponent } from '../subject-new/subject-new.component';
 import {
   SubjectEditComponent,
@@ -72,6 +77,7 @@ export interface SubjectRow {
     MatSortModule,
     MatTableModule,
     MatTooltipModule,
+    ExportToExcelButtonComponent,
   ],
   templateUrl: './subject-list.component.html',
   styleUrl: './subject-list.component.scss',
@@ -93,6 +99,21 @@ export class SubjectListComponent implements OnInit, AfterViewInit {
   readonly deletingId = signal<number | null>(null);
 
   readonly dataSource = new MatTableDataSource<SubjectRow>([]);
+
+  readonly excelColumns: ExcelExportColumn<SubjectRow>[] = [
+    { header: 'ID', key: 'id', value: (r) => r.id, width: 8 },
+    { header: 'Nombre', key: 'description', value: (r) => this.exportCell(r.description) },
+    { header: 'Categoría', key: 'category', value: (r) => this.exportCell(r.category) },
+    { header: 'Nivel', key: 'level', value: (r) => this.exportCell(r.level) },
+  ];
+
+  readonly excelConfig = (): ExcelExportConfig<SubjectRow> => ({
+    rows: this.dataSource.filteredData,
+    columns: this.excelColumns,
+    entitySlug: 'subjects',
+    sheetName: 'Materias',
+    filteredBy: this.filterText(),
+  });
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;
@@ -273,5 +294,9 @@ export class SubjectListComponent implements OnInit, AfterViewInit {
   private fallback(value: string | null | undefined): string {
     if (value === null || value === undefined) return SUBJECT_FALLBACK;
     return value.trim().length === 0 ? SUBJECT_FALLBACK : value;
+  }
+
+  private exportCell(value: string): string {
+    return value === SUBJECT_FALLBACK ? '' : value;
   }
 }

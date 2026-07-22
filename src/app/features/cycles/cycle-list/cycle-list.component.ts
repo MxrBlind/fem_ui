@@ -28,6 +28,11 @@ import { catchError, filter, finalize, of, switchMap } from 'rxjs';
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { CycleService } from '@core/services/cycle.service';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
+import {
+  ExcelExportColumn,
+  ExcelExportConfig,
+  ExportToExcelButtonComponent,
+} from '@shared/table-export';
 import { CycleNewComponent } from '../cycle-new/cycle-new.component';
 import { CycleEditComponent } from '../cycle-edit/cycle-edit.component';
 import { CycleDeleteConfirmComponent } from '../cycle-delete-confirm/cycle-delete-confirm.component';
@@ -67,6 +72,7 @@ export interface CycleRow {
     MatTableModule,
     MatTooltipModule,
     HasRoleDirective,
+    ExportToExcelButtonComponent,
   ],
   templateUrl: './cycle-list.component.html',
   styleUrl: './cycle-list.component.scss',
@@ -94,6 +100,39 @@ export class CycleListComponent implements OnInit, AfterViewInit {
   readonly deletingId = signal<number | null>(null);
 
   readonly dataSource = new MatTableDataSource<CycleRow>([]);
+
+  readonly excelColumns: ExcelExportColumn<CycleRow>[] = [
+    { header: 'ID', key: 'id', value: (r) => r.id, width: 8 },
+    { header: 'Descripción', key: 'description', value: (r) => r.description },
+    {
+      header: 'Fecha de inicio',
+      key: 'startDate',
+      value: (r) => this.formatDate(r.startDate),
+    },
+    {
+      header: 'Fecha de fin',
+      key: 'endDate',
+      value: (r) => this.formatDate(r.endDate),
+    },
+    {
+      header: 'Director',
+      key: 'principalName',
+      value: (r) => (r.principalName === PRINCIPAL_FALLBACK ? '' : r.principalName),
+    },
+    { header: 'Ciclo actual', key: 'current', value: (r) => (r.current ? 'Sí' : 'No') },
+  ];
+
+  readonly excelConfig = (): ExcelExportConfig<CycleRow> => ({
+    rows: this.dataSource.filteredData,
+    columns: this.excelColumns,
+    entitySlug: 'cycles',
+    sheetName: 'Ciclos',
+    filteredBy: this.filterText(),
+  });
+
+  private formatDate(iso: string): string {
+    return this.datePipe.transform(iso, 'dd/MM/yyyy') ?? '';
+  }
 
   @ViewChild(MatSort) sort?: MatSort;
   @ViewChild(MatPaginator) paginator?: MatPaginator;
