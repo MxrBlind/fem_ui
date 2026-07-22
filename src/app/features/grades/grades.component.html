@@ -3,6 +3,11 @@
     <h2 class="grades__title mat-headline-small" data-testid="grades-title">
       Lista de calificaciones
     </h2>
+    <app-export-to-excel-button
+      data-testid="grades-export-btn"
+      [configFactory]="excelConfig"
+      [disabled]="loading()"
+    />
   </header>
 
   @if (loading()) {

@@ -7,17 +7,24 @@
       {{ title }}
     </h2>
 
-    <button
-      *hasRole="['admin']"
-      mat-flat-button
-      color="primary"
-      type="button"
-      data-testid="subjects-new-btn"
-      (click)="onCreate()"
-    >
-      <mat-icon>add</mat-icon>
-      {{ newButtonLabel }}
-    </button>
+    <div class="subject-list__actions">
+      <button
+        *hasRole="['admin']"
+        mat-flat-button
+        color="primary"
+        type="button"
+        data-testid="subjects-new-btn"
+        (click)="onCreate()"
+      >
+        <mat-icon>add</mat-icon>
+        {{ newButtonLabel }}
+      </button>
+      <app-export-to-excel-button
+        data-testid="subjects-export-btn"
+        [configFactory]="excelConfig"
+        [disabled]="loading()"
+      />
+    </div>
   </header>
 
   @if (loading()) {

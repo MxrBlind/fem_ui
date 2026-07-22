@@ -2,16 +2,23 @@
   <header class="current-cycle-list__header">
     <h2 class="current-cycle-list__title mat-headline-small">{{ title() }}</h2>
 
-    <button
-      *hasRole="['admin']"
-      mat-flat-button
-      color="primary"
-      type="button"
-      (click)="onCreate()"
-    >
-      <mat-icon>add</mat-icon>
-      Nuevo curso
-    </button>
+    <div class="current-cycle-list__actions">
+      <button
+        *hasRole="['admin']"
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="onCreate()"
+      >
+        <mat-icon>add</mat-icon>
+        Nuevo curso
+      </button>
+      <app-export-to-excel-button
+        data-testid="current-cycle-export-btn"
+        [configFactory]="excelConfig"
+        [disabled]="loading()"
+      />
+    </div>
   </header>
 
   @if (loading()) {
