@@ -13,19 +13,51 @@
 
 .login-card {
   width: 100%;
-  max-width: 400px;
-  padding: 32px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  max-width: 880px;
+  padding: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   background: var(--mat-sys-surface-container);
   color: var(--mat-sys-on-surface);
 }
 
-.login-card__logo {
+.login-card__welcome {
+  background: #0f88cf;
+  color: #fff;
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  margin-bottom: 8px;
+  gap: 24px;
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.login-card__welcome-logo {
+  width: 140px;
+  height: auto;
+}
+
+.login-card__welcome-text {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.login-card__form {
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
 }
 
 .full-width {
@@ -46,5 +78,16 @@
 
   a[mat-button] {
     align-self: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-card {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+
+  .login-card__welcome {
+    padding: 32px 24px;
   }
 }
