@@ -43,21 +43,31 @@ fem-front/
 │   │   ├── core/                     # Singletons: auth, models, services
 │   │   │   ├── auth/                 # Guards, HTTP interceptor, RBAC, hasRole directive, bootstrap
 │   │   │   ├── models/
-│   │   │   └── services/             # auth, user, course, cycle, enrollment, token-storage
+│   │   │   └── services/             # auth, user, profile, course, cycle, enrollment, grade,
+│   │   │                             #   student, teacher, subject, category, level, token-storage
 │   │   ├── features/                 # Lazy-loaded feature areas
 │   │   │   ├── auth/login/
 │   │   │   ├── shell/                # Authenticated layout + child routes (sidenav, toolbar)
 │   │   │   ├── dashboard/
+│   │   │   ├── profile/
 │   │   │   ├── courses/
+│   │   │   ├── cycles/
+│   │   │   ├── current-cycle/
+│   │   │   ├── subjects/
+│   │   │   ├── students/
+│   │   │   ├── teachers/
 │   │   │   ├── grades/
 │   │   │   └── enrollments/          # list, new, edit, delete-confirm, models
+│   │   ├── shared/                   # Cross-feature building blocks (e.g. table-export)
 │   │   ├── app.config.ts             # Application providers
 │   │   ├── app.routes.ts             # Root routes (login + authenticated shell)
 │   │   └── app.ts / app.html         # Root component
 │   ├── environments/                 # environment.ts / environment.prod.ts (apiBaseUrl)
 │   └── styles.scss                   # Global M3 theme
+├── public/                           # Static assets served as-is (favicon, images)
+├── packages/                         # Vendored internal packages (specboot)
 ├── docs/                             # Project standards & specifications (see below)
-├── ai-specs/                         # AI agent roles & reusable skills
+├── .claude/                          # AI agents, skills, commands & settings
 ├── openspec/                         # Spec-driven change workflow (changes, specs, config)
 └── angular.json / package.json / tsconfig*.json
 ```
@@ -131,10 +141,9 @@ All development follows the rules in [`docs/base-standards.md`](docs/base-standa
 
 This repository is set up for AI-assisted development driven by [OpenSpec](https://github.com/Fission-AI/OpenSpec) and a set of portable agent roles and skills.
 
-- **`ai-specs/agents/`** — role definitions the AI adopts for work (e.g. `frontend-developer.md`, `product-strategy-analyst.md`).
-- **`ai-specs/skills/`** — reusable workflow prompts (`enrich-us`, `commit`, `code-auditing`, `writing-skills`, `using-git-worktrees`, `update-docs`, and more), mirrored into `.claude/` and `.cursor/` via relative symlinks so any copilot can discover them.
-- **`openspec/`** — the change pipeline: `changes/` (in-flight proposals with `proposal.md`, `design.md`, `specs/`, `tasks.md`), `specs/` (accepted capability specs), and `config.yaml` (shared context pointing back at `docs/` and `ai-specs/`).
-- **Copilot config** — `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, and `codex.md` all reference `docs/base-standards.md` so different AI tools stay consistent.
+- **`.claude/agents/`** — role definitions the AI adopts for work (e.g. `frontend-developer.md`, `product-strategy-analyst.md`).
+- **`.claude/skills/`** — reusable workflow prompts (`enrich-us`, `commit`, `code-auditing`, `writing-skills`, `using-git-worktrees`, `update-docs`, and more)
+- **`openspec/`** — the change pipeline: `changes/` (in-flight proposals with `proposal.md`, `design.md`, `specs/`, `tasks.md`), `specs/` (accepted capability specs), and `config.yaml` (shared context pointing back at `docs/` and `.claude/`).
 
 Typical change flow: `/enrich-us` (refine a ticket) → `/propose` (create change + artifacts) → `/apply` (implement tasks) → `/verify` → `/archive`.
 

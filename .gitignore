@@ -5,13 +5,8 @@
 packages/
 openspec/
 docs/
-ai-specs/
-.cursor/
 .claude/
-AGENTS.md
 CLAUDE.md
-codex.md
-GEMINI.md
 node_modules/
 .angular/
 dist/
