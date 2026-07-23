@@ -61,7 +61,7 @@ describe('AuthService', () => {
 
     expect(tokenStorage.getToken()).toBe('tok');
     expect(service.currentUser()?.role).toBe('admin');
-    expect(navigateSpy).toHaveBeenCalledWith('/dashboard');
+    expect(navigateSpy).toHaveBeenCalledWith('/inscripciones');
   });
 
   it('navigates a teacher to /courses (single-role landing)', async () => {

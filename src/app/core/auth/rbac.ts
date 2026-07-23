@@ -8,7 +8,7 @@ export const KNOWN_ROLES: ReadonlySet<Role> = new Set<Role>([
 ]);
 
 export const ROLE_HOME_ROUTES: Record<Role, string> = {
-  admin: '/dashboard',
+  admin: '/inscripciones',
   principal: '/dashboard',
   teacher: '/courses',
   student: '/grades'
