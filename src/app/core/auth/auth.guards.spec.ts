@@ -73,6 +73,6 @@ describe('loginRedirectGuard', () => {
   it('sends authenticated users to their role home', () => {
     const tree = runGuard(loginRedirectGuard, admin) as UrlTree;
     const router = TestBed.inject(Router);
-    expect(router.serializeUrl(tree)).toBe('/dashboard');
+    expect(router.serializeUrl(tree)).toBe('/inscripciones');
   });
 });
