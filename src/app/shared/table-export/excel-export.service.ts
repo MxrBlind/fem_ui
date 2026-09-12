@@ -50,7 +50,12 @@ export class ExcelExportService {
 
   private loadExcelJs(): Promise<ExcelJsModule> {
     if (!this.modulePromise) {
-      this.modulePromise = import('exceljs');
+      this.modulePromise = import('exceljs').then((mod) => {
+        const resolved = (mod as { Workbook?: unknown }).Workbook
+          ? mod
+          : ((mod as unknown as { default: ExcelJsModule }).default ?? mod);
+        return resolved as ExcelJsModule;
+      });
     }
     return this.modulePromise;
   }
