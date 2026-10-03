@@ -20,7 +20,6 @@ import {
   DELETE_ERROR_MESSAGE,
   DELETE_SUCCESS_MESSAGE,
   LOAD_ERROR_MESSAGE,
-  PRINCIPAL_FALLBACK,
 } from './cycle-list.component';
 
 const admin: AuthUser = { id: 1, username: 'admin', role: 'admin', rawRole: 'admin' };
@@ -106,37 +105,23 @@ describe('CycleListComponent', () => {
   });
 
   describe('row mapping', () => {
-    it('maps CycleDto to CycleRow with composed principal name', () => {
+    it('maps openForEnrollment with ?? false fallback when the field is missing', () => {
       const { fixture } = setup(admin, {
-        cycles: [makeCycle(1, { principal: { id: 1, username: 'p', profile: { name: 'Ana', parentLastName: 'Perez' } } })],
+        cycles: [makeCycle(1, { openForEnrollment: undefined })],
       });
-      expect(fixture.componentInstance.rows()[0].principalName).toBe('Ana Perez');
+      expect(fixture.componentInstance.rows()[0].openForEnrollment).toBe(false);
     });
 
-    it('falls back to em-dash when principal is missing', () => {
+    it('preserves openForEnrollment=true from the DTO', () => {
       const { fixture } = setup(admin, {
-        cycles: [makeCycle(1, { principal: undefined })],
+        cycles: [makeCycle(1, { openForEnrollment: true })],
       });
-      expect(fixture.componentInstance.rows()[0].principalName).toBe(PRINCIPAL_FALLBACK);
-    });
-
-    it('falls back to em-dash when principal.profile is missing', () => {
-      const { fixture } = setup(admin, {
-        cycles: [makeCycle(1, { principal: { id: 2, username: 'p' } })],
-      });
-      expect(fixture.componentInstance.rows()[0].principalName).toBe(PRINCIPAL_FALLBACK);
-    });
-
-    it('falls back to em-dash when profile name fields are blank', () => {
-      const { fixture } = setup(admin, {
-        cycles: [makeCycle(1, { principal: { id: 2, username: 'p', profile: {} } })],
-      });
-      expect(fixture.componentInstance.rows()[0].principalName).toBe(PRINCIPAL_FALLBACK);
+      expect(fixture.componentInstance.rows()[0].openForEnrollment).toBe(true);
     });
   });
 
   describe('column rendering', () => {
-    it('renders all seven column headers in order', () => {
+    it('renders all seven column headers in order (no Director, now with Abierto a inscripción)', () => {
       const { fixture } = setup(admin);
       const headers = fixture.debugElement
         .queryAll(By.css('th.mat-mdc-header-cell'))
@@ -146,10 +131,69 @@ describe('CycleListComponent', () => {
         'Descripción',
         'Fecha de inicio',
         'Fecha de fin',
-        'Director',
         'Ciclo actual',
+        'Abierto a inscripción',
         'Acciones',
       ]);
+    });
+
+    it('exposes the expected displayedColumns set', () => {
+      const { fixture } = setup(admin);
+      expect(fixture.componentInstance.displayedColumns).toEqual([
+        'id',
+        'description',
+        'startDate',
+        'endDate',
+        'current',
+        'openForEnrollment',
+        'actions',
+      ]);
+      expect(fixture.componentInstance.displayedColumns).not.toContain('principalName');
+    });
+
+    it('renders a check icon when openForEnrollment is true', () => {
+      const { fixture } = setup(admin, {
+        cycles: [makeCycle(1, { openForEnrollment: true })],
+      });
+      const cell = fixture.debugElement.query(
+        By.css('td.mat-column-openForEnrollment span')
+      );
+      expect(cell.nativeElement.getAttribute('aria-label')).toBe('Sí');
+      expect(cell.nativeElement.textContent).toContain('check');
+    });
+
+    it('renders a close icon when openForEnrollment is false/undefined', () => {
+      const { fixture } = setup(admin, {
+        cycles: [makeCycle(1, { openForEnrollment: undefined })],
+      });
+      const cell = fixture.debugElement.query(
+        By.css('td.mat-column-openForEnrollment span')
+      );
+      expect(cell.nativeElement.getAttribute('aria-label')).toBe('No');
+      expect(cell.nativeElement.textContent).toContain('close');
+    });
+  });
+
+  describe('excel export columns', () => {
+    it('includes Abierto a inscripción and excludes Director', () => {
+      const { fixture } = setup(admin);
+      const headers = fixture.componentInstance.excelColumns.map((c) => c.header);
+      expect(headers).toContain('Abierto a inscripción');
+      expect(headers).not.toContain('Director');
+    });
+
+    it('serializes openForEnrollment as Sí/No', () => {
+      const { fixture } = setup(admin);
+      const col = fixture.componentInstance.excelColumns.find(
+        (c) => c.key === 'openForEnrollment'
+      );
+      expect(col).toBeTruthy();
+      expect(
+        col!.value({ openForEnrollment: true } as never)
+      ).toBe('Sí');
+      expect(
+        col!.value({ openForEnrollment: false } as never)
+      ).toBe('No');
     });
   });
 
@@ -162,21 +206,28 @@ describe('CycleListComponent', () => {
       expect(fixture.componentInstance.dataSource.filteredData[0].description).toBe('2026-2');
     });
 
-    it('is case-insensitive and matches principal name', () => {
-      const { fixture } = setup(admin);
-      fixture.componentInstance.onFilterInput('NAME3');
-      fixture.detectChanges();
-      expect(fixture.componentInstance.dataSource.filteredData.length).toBe(1);
-      expect(fixture.componentInstance.dataSource.filteredData[0].principalName).toContain('Name3');
-    });
-
     it('matches against the ✓/✕ current flag', () => {
       const { fixture } = setup(admin);
       fixture.componentInstance.onFilterInput('✓');
       fixture.detectChanges();
       const filtered = fixture.componentInstance.dataSource.filteredData;
       expect(filtered.length).toBeGreaterThan(0);
-      expect(filtered.every((r) => r.current)).toBe(true);
+      // ✓ matches rows whose current OR openForEnrollment is true.
+      expect(filtered.every((r) => r.current || r.openForEnrollment)).toBe(true);
+    });
+
+    it('matches rows by the openForEnrollment ✓/✕ tokens', () => {
+      const { fixture } = setup(admin, {
+        cycles: [
+          makeCycle(1, { current: false, openForEnrollment: true }),
+          makeCycle(2, { current: false, openForEnrollment: false }),
+        ],
+      });
+      fixture.componentInstance.onFilterInput('✓');
+      fixture.detectChanges();
+      const filtered = fixture.componentInstance.dataSource.filteredData;
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].openForEnrollment).toBe(true);
     });
 
     it('does not issue an HTTP request on keystroke', () => {

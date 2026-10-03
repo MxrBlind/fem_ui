@@ -90,16 +90,24 @@
             <td mat-cell *matCellDef="let row">{{ row.endDate | date:'mediumDate' }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="principalName">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Director</th>
-            <td mat-cell *matCellDef="let row">{{ row.principalName }}</td>
-          </ng-container>
-
           <ng-container matColumnDef="current">
             <th mat-header-cell *matHeaderCellDef mat-sort-header>Ciclo actual</th>
             <td mat-cell *matCellDef="let row">
               <span class="current-flag" [attr.aria-label]="row.current ? 'Sí' : 'No'">
                 @if (row.current) {
+                  <mat-icon>check</mat-icon>
+                } @else {
+                  <mat-icon>close</mat-icon>
+                }
+              </span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="openForEnrollment">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Abierto a inscripción</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="current-flag" [attr.aria-label]="row.openForEnrollment ? 'Sí' : 'No'">
+                @if (row.openForEnrollment) {
                   <mat-icon>check</mat-icon>
                 } @else {
                   <mat-icon>close</mat-icon>

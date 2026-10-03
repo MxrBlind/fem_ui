@@ -7,6 +7,7 @@ export interface CycleDto {
   endDate: string;
   principal?: UserDto;
   current?: boolean;
+  openForEnrollment?: boolean;
   active?: boolean;
 }
 

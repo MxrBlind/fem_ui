@@ -20,8 +20,8 @@ describe('CycleDeleteConfirmComponent', () => {
     description: '2026-I',
     startDate: '2026-01-15T00:00:00Z',
     endDate: '2026-06-15T00:00:00Z',
-    principalName: 'Ana Perez',
     current: true,
+    openForEnrollment: false,
     raw: {} as CycleRow['raw'],
   };
 
