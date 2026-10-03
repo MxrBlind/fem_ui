@@ -39,7 +39,6 @@ import { CycleDeleteConfirmComponent } from '../cycle-delete-confirm/cycle-delet
 
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los ciclos. Intenta de nuevo más tarde.';
-export const PRINCIPAL_FALLBACK = '—';
 export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
 export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
 
@@ -48,8 +47,8 @@ export interface CycleRow {
   description: string;
   startDate: string;
   endDate: string;
-  principalName: string;
   current: boolean;
+  openForEnrollment: boolean;
   raw: CycleDto;
 }
 
@@ -89,8 +88,8 @@ export class CycleListComponent implements OnInit, AfterViewInit {
     'description',
     'startDate',
     'endDate',
-    'principalName',
     'current',
+    'openForEnrollment',
     'actions',
   ];
 
@@ -114,12 +113,12 @@ export class CycleListComponent implements OnInit, AfterViewInit {
       key: 'endDate',
       value: (r) => this.formatDate(r.endDate),
     },
-    {
-      header: 'Director',
-      key: 'principalName',
-      value: (r) => (r.principalName === PRINCIPAL_FALLBACK ? '' : r.principalName),
-    },
     { header: 'Ciclo actual', key: 'current', value: (r) => (r.current ? 'Sí' : 'No') },
+    {
+      header: 'Abierto a inscripción',
+      key: 'openForEnrollment',
+      value: (r) => (r.openForEnrollment ? 'Sí' : 'No'),
+    },
   ];
 
   readonly excelConfig = (): ExcelExportConfig<CycleRow> => ({
@@ -145,8 +144,8 @@ export class CycleListComponent implements OnInit, AfterViewInit {
         row.description,
         this.datePipe.transform(row.startDate, 'mediumDate') ?? '',
         this.datePipe.transform(row.endDate, 'mediumDate') ?? '',
-        row.principalName,
         row.current ? '✓' : '✕',
+        row.openForEnrollment ? '✓' : '✕',
       ]
         .join(' ')
         .toLowerCase();
@@ -311,18 +310,9 @@ export class CycleListComponent implements OnInit, AfterViewInit {
       description: cycle.description,
       startDate: cycle.startDate,
       endDate: cycle.endDate,
-      principalName: this.composePrincipalName(cycle),
       current: cycle.current ?? false,
+      openForEnrollment: cycle.openForEnrollment ?? false,
       raw: cycle,
     };
-  }
-
-  private composePrincipalName(cycle: CycleDto): string {
-    const profile = cycle.principal?.profile;
-    if (!profile) return PRINCIPAL_FALLBACK;
-    const name = (profile.name ?? '').trim();
-    const parent = (profile.parentLastName ?? '').trim();
-    const full = `${name} ${parent}`.trim();
-    return full.length > 0 ? full : PRINCIPAL_FALLBACK;
   }
 }
