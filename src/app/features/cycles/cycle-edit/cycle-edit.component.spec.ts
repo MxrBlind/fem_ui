@@ -14,8 +14,10 @@ import { UserDto } from '@core/models/auth.model';
 import { CycleDto } from '@features/enrollments/models/cycle.model';
 import {
   CycleEditComponent,
+  CURRENT_CONFLICT_MESSAGE,
   ERROR_MESSAGE,
   LOAD_ERROR_MESSAGE,
+  OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE,
   SUCCESS_MESSAGE,
 } from './cycle-edit.component';
 
@@ -311,6 +313,185 @@ describe('CycleEditComponent', () => {
         expect.anything()
       );
       errSpy.mockRestore();
+    });
+
+    describe('409 conflict handling', () => {
+      const conflictBody = (code?: string) => ({
+        status: 409,
+        error: 'Conflict',
+        message: 'Another cycle is already marked as current (cycleId=3)',
+        ...(code === undefined ? {} : { code }),
+      });
+
+      function submitAndFlush(
+        body: string | object | null,
+        status = 409,
+        statusText = 'Conflict'
+      ) {
+        const errSpy = vi
+          .spyOn(console, 'error')
+          .mockImplementation(() => undefined);
+        const harness = setup();
+        harness.fixture.componentInstance.onSubmit();
+        harness.http
+          .expectOne(`${environment.apiBaseUrl}/api/cycle/7`)
+          .flush(body, { status, statusText });
+        return { ...harness, errSpy };
+      }
+
+      const errorOptions = expect.objectContaining({
+        duration: 3000,
+        panelClass: 'snackbar-error',
+      });
+
+      it('shows the current-conflict message for CYCLE_CURRENT_CONFLICT', () => {
+        const { snackOpen, errSpy } = submitAndFlush(
+          conflictBody('CYCLE_CURRENT_CONFLICT')
+        );
+
+        expect(snackOpen).toHaveBeenCalledTimes(1);
+        expect(snackOpen).toHaveBeenCalledWith(
+          CURRENT_CONFLICT_MESSAGE,
+          'Cerrar',
+          errorOptions
+        );
+        errSpy.mockRestore();
+      });
+
+      it('shows the enrollment-conflict message for CYCLE_OPEN_FOR_ENROLLMENT_CONFLICT', () => {
+        const { snackOpen, errSpy } = submitAndFlush(
+          conflictBody('CYCLE_OPEN_FOR_ENROLLMENT_CONFLICT')
+        );
+
+        expect(snackOpen).toHaveBeenCalledTimes(1);
+        expect(snackOpen).toHaveBeenCalledWith(
+          OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE,
+          'Cerrar',
+          errorOptions
+        );
+        errSpy.mockRestore();
+      });
+
+      it('uses the exact Spanish texts from the spec', () => {
+        expect(CURRENT_CONFLICT_MESSAGE).toBe(
+          'Ya existe un ciclo activo, no es posible activar más'
+        );
+        expect(OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE).toBe(
+          'Ya existe un ciclo abierto a inscripciones'
+        );
+      });
+
+      it('falls back to the generic message for an unknown 409 code', () => {
+        const { snackOpen, errSpy } = submitAndFlush(
+          conflictBody('SOMETHING_ELSE')
+        );
+
+        expect(snackOpen).toHaveBeenCalledWith(
+          ERROR_MESSAGE,
+          'Cerrar',
+          errorOptions
+        );
+        errSpy.mockRestore();
+      });
+
+      it('falls back to the generic message when a 409 has no code', () => {
+        const { snackOpen, errSpy } = submitAndFlush(conflictBody());
+
+        expect(snackOpen).toHaveBeenCalledWith(
+          ERROR_MESSAGE,
+          'Cerrar',
+          errorOptions
+        );
+        errSpy.mockRestore();
+      });
+
+      it.each([
+        ['an empty body', null],
+        ['a text body', 'conflict'],
+        ['a non-string code', { code: 42 }],
+      ])(
+        'falls back to the generic message for a 409 with %s',
+        (_label, body) => {
+          const { snackOpen, errSpy } = submitAndFlush(body);
+
+          expect(snackOpen).toHaveBeenCalledWith(
+            ERROR_MESSAGE,
+            'Cerrar',
+            errorOptions
+          );
+          errSpy.mockRestore();
+        }
+      );
+
+      it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty'])(
+        'does not resolve the inherited property name "%s" as a message',
+        (code) => {
+          const { snackOpen, errSpy } = submitAndFlush(conflictBody(code));
+
+          expect(snackOpen).toHaveBeenCalledWith(
+            ERROR_MESSAGE,
+            'Cerrar',
+            errorOptions
+          );
+          errSpy.mockRestore();
+        }
+      );
+
+      it('ignores a known code on a non-409 status', () => {
+        const { snackOpen, errSpy } = submitAndFlush(
+          conflictBody('CYCLE_CURRENT_CONFLICT'),
+          500,
+          'Server Error'
+        );
+
+        expect(snackOpen).toHaveBeenCalledWith(
+          ERROR_MESSAGE,
+          'Cerrar',
+          errorOptions
+        );
+        errSpy.mockRestore();
+      });
+
+      it('never shows the server-provided message', () => {
+        const { snackOpen, errSpy } = submitAndFlush(
+          conflictBody('CYCLE_CURRENT_CONFLICT')
+        );
+
+        const shown = snackOpen.mock.calls.map((call: unknown[]) => call[0]);
+        expect(shown.join(' ')).not.toContain('Another cycle');
+        errSpy.mockRestore();
+      });
+
+      it('keeps the dialog open, re-enables the form and logs the error', () => {
+        const { fixture, dialogRef, errSpy } = submitAndFlush(
+          conflictBody('CYCLE_CURRENT_CONFLICT')
+        );
+
+        expect(dialogRef.close).not.toHaveBeenCalled();
+        expect(fixture.componentInstance.saving()).toBe(false);
+        expect(fixture.componentInstance.form.enabled).toBe(true);
+        expect(errSpy).toHaveBeenCalledWith(
+          '[cycle-edit] failed to update cycle',
+          expect.anything()
+        );
+        errSpy.mockRestore();
+      });
+
+      it('allows resubmitting after a conflict', () => {
+        const { fixture, http, dialogRef, errSpy } = submitAndFlush(
+          conflictBody('CYCLE_CURRENT_CONFLICT')
+        );
+
+        fixture.componentInstance.form.controls.current.setValue(false);
+        fixture.componentInstance.onSubmit();
+        const retry = http.expectOne(`${environment.apiBaseUrl}/api/cycle/7`);
+        expect(retry.request.method).toBe('PUT');
+        expect(retry.request.body.current).toBe(false);
+        retry.flush({ ...baseCycle(), current: false });
+
+        expect(dialogRef.close).toHaveBeenCalled();
+        errSpy.mockRestore();
+      });
     });
 
     it('does nothing when the form is invalid', () => {
