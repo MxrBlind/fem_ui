@@ -128,6 +128,33 @@ describe('CycleEditComponent', () => {
       expect(fixture.componentInstance.form.controls.current.value).toBe(false);
     });
 
+    it('initializes openForEnrollment from the injected cycle when true', () => {
+      const { fixture } = setup({
+        cycle: { ...baseCycle(), openForEnrollment: true },
+      });
+      expect(
+        fixture.componentInstance.form.controls.openForEnrollment.value
+      ).toBe(true);
+    });
+
+    it('defaults openForEnrollment to false when the cycle has no openForEnrollment flag', () => {
+      const { fixture } = setup({
+        cycle: { ...baseCycle(), openForEnrollment: undefined },
+      });
+      expect(
+        fixture.componentInstance.form.controls.openForEnrollment.value
+      ).toBe(false);
+    });
+
+    it('reflects openForEnrollment=false from the injected cycle', () => {
+      const { fixture } = setup({
+        cycle: { ...baseCycle(), openForEnrollment: false },
+      });
+      expect(
+        fixture.componentInstance.form.controls.openForEnrollment.value
+      ).toBe(false);
+    });
+
     it('disables the form while the teacher request is pending', () => {
       const { fixture } = setup({ skipFlush: true });
       expect(fixture.componentInstance.loading()).toBe(true);
@@ -220,7 +247,9 @@ describe('CycleEditComponent', () => {
 
   describe('submit', () => {
     it('PUTs the ISO-serialized payload and closes with the updated DTO on success', () => {
-      const { fixture, http, dialogRef, snackOpen } = setup();
+      const { fixture, http, dialogRef, snackOpen } = setup({
+        cycle: { ...baseCycle(), openForEnrollment: true },
+      });
       fixture.componentInstance.form.controls.description.setValue(
         'Ciclo actualizado'
       );
@@ -235,6 +264,7 @@ describe('CycleEditComponent', () => {
         endDate: '2026-06-30',
         principal: { id: 1 },
         current: false,
+        openForEnrollment: true,
       });
 
       const updated: CycleDto = {
@@ -294,6 +324,35 @@ describe('CycleEditComponent', () => {
       const { fixture, http } = setup({ failLoad: true });
       fixture.componentInstance.onSubmit();
       http.expectNone(`${environment.apiBaseUrl}/api/cycle/7`);
+    });
+
+    it('sends openForEnrollment=true in the payload when toggled on', () => {
+      const { fixture, http } = setup({
+        cycle: { ...baseCycle(), openForEnrollment: false },
+      });
+      fixture.componentInstance.form.controls.openForEnrollment.setValue(true);
+      fixture.componentInstance.onSubmit();
+
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle/7`);
+      expect(req.request.body).toEqual(
+        expect.objectContaining({ openForEnrollment: true })
+      );
+      req.flush({ ...baseCycle(), openForEnrollment: true });
+    });
+
+    it('submits current and openForEnrollment independently in any combination', () => {
+      const { fixture, http } = setup({
+        cycle: { ...baseCycle(), current: true, openForEnrollment: false },
+      });
+      fixture.componentInstance.form.controls.current.setValue(true);
+      fixture.componentInstance.form.controls.openForEnrollment.setValue(false);
+      fixture.componentInstance.onSubmit();
+
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle/7`);
+      expect(req.request.body).toEqual(
+        expect.objectContaining({ current: true, openForEnrollment: false })
+      );
+      req.flush({ ...baseCycle(), current: true, openForEnrollment: false });
     });
   });
 

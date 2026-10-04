@@ -130,6 +130,7 @@ describe('CycleService', () => {
       endDate: '2027-06-15',
       principal: { id: 42 },
       current: true,
+      openForEnrollment: true,
     };
     const updated: CycleDto = {
       id: 7,
@@ -155,6 +156,7 @@ describe('CycleService', () => {
       endDate: '2027-06-15',
       principal: { id: 42 },
       current: false,
+      openForEnrollment: false,
     };
     const promise = firstValueFrom(service.update(7, payload));
     http
