@@ -7,6 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
@@ -49,6 +50,35 @@ export const SUCCESS_MESSAGE = 'Registro actualizado exitosamente';
 export const ERROR_MESSAGE = 'Error al actualizar este registro';
 export const LOAD_ERROR_MESSAGE =
   'No se pudieron cargar los datos del formulario';
+export const CURRENT_CONFLICT_MESSAGE =
+  'Ya existe un ciclo activo, no es posible activar más';
+export const OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE =
+  'Ya existe un ciclo abierto a inscripciones';
+
+const CYCLE_CONFLICT_MESSAGES: ReadonlyMap<string, string> = new Map([
+  ['CYCLE_CURRENT_CONFLICT', CURRENT_CONFLICT_MESSAGE],
+  ['CYCLE_OPEN_FOR_ENROLLMENT_CONFLICT', OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE],
+]);
+
+/**
+ * Maps a failed cycle update to the user-facing snackbar message.
+ * Only HTTP 409 responses carrying a known top-level `code` get a specific
+ * message; everything else falls back to the generic one. The server-provided
+ * `message` is never shown.
+ */
+function resolveUpdateErrorMessage(err: unknown): string {
+  if (!(err instanceof HttpErrorResponse) || err.status !== 409) {
+    return ERROR_MESSAGE;
+  }
+  const body: unknown = err.error;
+  if (typeof body !== 'object' || body === null || !('code' in body)) {
+    return ERROR_MESSAGE;
+  }
+  const { code } = body;
+  return typeof code === 'string'
+    ? (CYCLE_CONFLICT_MESSAGES.get(code) ?? ERROR_MESSAGE)
+    : ERROR_MESSAGE;
+}
 
 export interface CycleEditDialogData {
   cycle: CycleDto;
@@ -237,7 +267,7 @@ export class CycleEditComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[cycle-edit] failed to update cycle', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
+          this.snackBar.open(resolveUpdateErrorMessage(err), 'Cerrar', {
             duration: 3000,
             panelClass: 'snackbar-error',
           });
