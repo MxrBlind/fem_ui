@@ -25,4 +25,5 @@ export interface UpdateCycleRequest {
   endDate: string;
   principal: { id: number };
   current: boolean;
+  openForEnrollment: boolean;
 }

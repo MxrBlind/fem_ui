@@ -124,6 +124,10 @@ export class CycleEditComponent implements OnInit {
       current: new FormControl<boolean>(this.data.cycle.current ?? false, {
         nonNullable: true,
       }),
+      openForEnrollment: new FormControl<boolean>(
+        this.data.cycle.openForEnrollment ?? false,
+        { nonNullable: true }
+      ),
       principalId: new FormControl<number | null>(
         this.data.cycle.principal?.id ?? null,
         { validators: [Validators.required] }
@@ -201,8 +205,14 @@ export class CycleEditComponent implements OnInit {
     const cycleId = this.data.cycle.id;
     if (cycleId == null) return;
 
-    const { description, startDate, endDate, current, principalId } =
-      this.form.getRawValue();
+    const {
+      description,
+      startDate,
+      endDate,
+      current,
+      openForEnrollment,
+      principalId,
+    } = this.form.getRawValue();
     if (!startDate || !endDate || principalId == null) return;
 
     const payload: UpdateCycleRequest = {
@@ -211,6 +221,7 @@ export class CycleEditComponent implements OnInit {
       endDate: toIsoDateString(endDate),
       principal: { id: principalId },
       current,
+      openForEnrollment,
     };
 
     this.saving.set(true);
