@@ -23,6 +23,7 @@ import {
   DELETE_ERROR_MESSAGE,
   DELETE_SUCCESS_MESSAGE,
   LOAD_ERROR_MESSAGE,
+  NO_LEVEL_LABEL,
   STUDENT_FALLBACK,
   StudentListComponent,
 } from './student-list.component';
@@ -122,8 +123,10 @@ describe('StudentListComponent', () => {
   });
 
   describe('row mapping', () => {
-    it('renders one row per UserDto and maps every profile field', () => {
-      const { fixture } = setup({ students: [makeStudent(1)] });
+    it('renders one row per UserDto and maps every profile field and the level title', () => {
+      const { fixture } = setup({
+        students: [makeStudent(1, { level: { id: 3, title: 'Diplomado', code: 'DIPLOMADO' } })],
+      });
       const rows = fixture.componentInstance.rows();
       expect(rows.length).toBe(1);
       expect(rows[0]).toMatchObject({
@@ -132,9 +135,32 @@ describe('StudentListComponent', () => {
         parentLastName: 'Paterno1',
         motherLastName: 'Materno1',
         email: 's1@example.com',
+        levelTitle: 'Diplomado',
         phone: '555000001',
         church: 'Church1',
       });
+    });
+
+    it('maps levelTitle to an empty string when the level is missing or has no usable title', () => {
+      const { fixture } = setup({
+        students: [
+          makeStudent(1),
+          makeStudent(2, { level: null }),
+          makeStudent(3, { level: { id: 1 } }),
+          makeStudent(4, { level: { id: 1, title: undefined } }),
+          makeStudent(5, { level: { id: 1, title: '' } }),
+          makeStudent(6, { level: { id: 1, title: '   ' } }),
+        ],
+      });
+      const rows = fixture.componentInstance.rows();
+      expect(rows.map((r) => r.levelTitle)).toEqual(['', '', '', '', '', '']);
+    });
+
+    it('trims the level title', () => {
+      const { fixture } = setup({
+        students: [makeStudent(1, { level: { id: 1, title: '  Nivel 1  ' } })],
+      });
+      expect(fixture.componentInstance.rows()[0].levelTitle).toBe('Nivel 1');
     });
 
     it('falls back to em-dash when profile is missing', () => {
@@ -143,7 +169,6 @@ describe('StudentListComponent', () => {
       expect(row.name).toBe(STUDENT_FALLBACK);
       expect(row.parentLastName).toBe(STUDENT_FALLBACK);
       expect(row.motherLastName).toBe(STUDENT_FALLBACK);
-      expect(row.email).toBe(STUDENT_FALLBACK);
       expect(row.phone).toBe(STUDENT_FALLBACK);
       expect(row.church).toBe(STUDENT_FALLBACK);
     });
@@ -169,14 +194,13 @@ describe('StudentListComponent', () => {
       expect(row.name).toBe(STUDENT_FALLBACK);
       expect(row.parentLastName).toBe(STUDENT_FALLBACK);
       expect(row.motherLastName).toBe(STUDENT_FALLBACK);
-      expect(row.email).toBe(STUDENT_FALLBACK);
       expect(row.phone).toBe('ok');
       expect(row.church).toBe(STUDENT_FALLBACK);
     });
   });
 
   describe('column rendering', () => {
-    it('renders all eight column headers in order', () => {
+    it('renders all eight column headers in order, with Nivel instead of Email', () => {
       const { fixture } = setup();
       const headers = fixture.debugElement
         .queryAll(By.css('th.mat-mdc-header-cell'))
@@ -186,11 +210,55 @@ describe('StudentListComponent', () => {
         'Nombre(s)',
         'Paterno',
         'Materno',
-        'Email',
+        'Nivel',
         'Teléfono',
         'Iglesia',
         'Acciones',
       ]);
+      expect(headers).not.toContain('Email');
+    });
+
+    describe('Nivel cell', () => {
+      function levelCells(
+        fixture: ComponentFixture<StudentListComponent>
+      ): HTMLElement[] {
+        return fixture.debugElement
+          .queryAll(By.css('td.mat-column-levelTitle'))
+          .map((c) => c.nativeElement as HTMLElement);
+      }
+
+      it('renders the level title and no unassigned indicator for an assigned student', () => {
+        const { fixture } = setup({
+          students: [makeStudent(1, { level: { id: 3, title: 'Diplomado' } })],
+        });
+        const [cell] = levelCells(fixture);
+        expect(cell.textContent).toContain('Diplomado');
+        expect(cell.textContent).not.toContain(NO_LEVEL_LABEL);
+        expect(cell.querySelector('mat-icon')).toBeNull();
+      });
+
+      it('renders the exclamation icon and "No asignado" when the level is missing', () => {
+        const { fixture } = setup({
+          students: [makeStudent(1), makeStudent(2, { level: null })],
+        });
+        const cells = levelCells(fixture);
+        expect(cells.length).toBe(2);
+        for (const cell of cells) {
+          const icon = cell.querySelector('mat-icon');
+          expect(icon?.textContent?.trim()).toBe('error_outline');
+          expect(icon?.getAttribute('aria-hidden')).toBe('true');
+          expect(cell.textContent).toContain('No asignado');
+        }
+      });
+
+      it('renders the unassigned indicator when the level has a blank title', () => {
+        const { fixture } = setup({
+          students: [makeStudent(1, { level: { id: 1, title: '   ' } })],
+        });
+        const [cell] = levelCells(fixture);
+        expect(cell.querySelector('mat-icon')?.textContent?.trim()).toBe('error_outline');
+        expect(cell.textContent).toContain('No asignado');
+      });
     });
 
     it('renders the header title "Administrar estudiantes" and the "Nuevo estudiante" button', () => {
@@ -215,15 +283,55 @@ describe('StudentListComponent', () => {
       expect(fixture.componentInstance.dataSource.filteredData[0].name).toBe('Name2');
     });
 
-    it('is case-insensitive and matches across email and phone', () => {
+    it('is case-insensitive and matches across phone', () => {
       const { fixture } = setup();
-      fixture.componentInstance.onFilterInput('S3@EXAMPLE');
+      fixture.componentInstance.onFilterInput('NAME3');
       fixture.detectChanges();
       expect(fixture.componentInstance.dataSource.filteredData.length).toBe(1);
 
       fixture.componentInstance.onFilterInput('55500000');
       fixture.detectChanges();
       expect(fixture.componentInstance.dataSource.filteredData.length).toBe(3);
+    });
+
+    it('matches by level title, case-insensitively', () => {
+      const { fixture } = setup({
+        students: [
+          makeStudent(1, { level: { id: 1, title: 'Nivel 1' } }),
+          makeStudent(2, { level: { id: 2, title: 'Diplomado' } }),
+          makeStudent(3),
+        ],
+      });
+      const src = fixture.componentInstance;
+
+      src.onFilterInput('NIVEL 1');
+      fixture.detectChanges();
+      expect(src.dataSource.filteredData.map((r) => r.id)).toEqual([1]);
+
+      src.onFilterInput('diplom');
+      fixture.detectChanges();
+      expect(src.dataSource.filteredData.map((r) => r.id)).toEqual([2]);
+    });
+
+    it('matches "no asignado" against students without a level only', () => {
+      const { fixture } = setup({
+        students: [
+          makeStudent(1, { level: { id: 1, title: 'Nivel 1' } }),
+          makeStudent(2),
+          makeStudent(3, { level: null }),
+        ],
+      });
+      const src = fixture.componentInstance;
+      src.onFilterInput('no asignado');
+      fixture.detectChanges();
+      expect(src.dataSource.filteredData.map((r) => r.id).sort()).toEqual([2, 3]);
+    });
+
+    it('does not match by email anymore', () => {
+      const { fixture } = setup();
+      fixture.componentInstance.onFilterInput('s3@example');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.dataSource.filteredData.length).toBe(0);
     });
 
     it('matches against parentLastName, motherLastName, church, and id', () => {
@@ -262,6 +370,22 @@ describe('StudentListComponent', () => {
       expect(fixture.componentInstance.sort?.direction).toBe('asc');
     });
 
+    it('sorts by level title when the Nivel header is active', () => {
+      const { fixture } = setup({
+        students: [
+          makeStudent(1, { level: { id: 2, title: 'Zeta' } }),
+          makeStudent(2, { level: { id: 1, title: 'Alfa' } }),
+          makeStudent(3),
+        ],
+      });
+      const src = fixture.componentInstance;
+      src.sort?.sort({ id: 'levelTitle', start: 'asc', disableClear: false });
+      fixture.detectChanges();
+      expect(src.dataSource.sortData(src.dataSource.filteredData, src.sort!).map((r) => r.id)).toEqual([
+        3, 2, 1,
+      ]);
+    });
+
     it('paginator default page size is 10 with the configured options', () => {
       const { fixture } = setup();
       expect(fixture.componentInstance.paginator?.pageSize).toBe(10);
@@ -275,6 +399,39 @@ describe('StudentListComponent', () => {
       fixture.componentInstance.paginator?.nextPage();
       fixture.detectChanges();
       http.expectNone((r) => r.url === USERS_URL);
+    });
+  });
+
+  describe('excel export', () => {
+    it('exposes a Nivel column instead of Email', () => {
+      const { fixture } = setup();
+      const headers = fixture.componentInstance.excelColumns.map((c) => c.header);
+      expect(headers).toEqual([
+        'ID',
+        'Nombre(s)',
+        'Paterno',
+        'Materno',
+        'Nivel',
+        'Teléfono',
+        'Iglesia',
+      ]);
+      expect(headers).not.toContain('Email');
+    });
+
+    it('exports the level title, and an empty cell for unassigned students', () => {
+      const { fixture } = setup({
+        students: [
+          makeStudent(1, { level: { id: 3, title: 'Diplomado' } }),
+          makeStudent(2),
+        ],
+      });
+      const levelColumn = fixture.componentInstance.excelColumns.find(
+        (c) => c.key === 'levelTitle'
+      );
+      expect(levelColumn).toBeDefined();
+      const [assigned, unassigned] = fixture.componentInstance.excelConfig().rows;
+      expect(levelColumn!.value(assigned)).toBe('Diplomado');
+      expect(levelColumn!.value(unassigned)).toBe('');
     });
   });
 
