@@ -1,3 +1,5 @@
+import type { LevelDto } from '@features/enrollments/models/enrollment.model';
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -34,4 +36,5 @@ export interface UserDto {
   status?: string;
   profile?: ProfileDto;
   role?: RoleDto | null;
+  level?: LevelDto | null;
 }

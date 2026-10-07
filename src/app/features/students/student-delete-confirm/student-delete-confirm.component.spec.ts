@@ -17,6 +17,7 @@ function makeRow(overrides: Partial<StudentRow> = {}): StudentRow {
     parentLastName: 'Perez',
     motherLastName: 'Garcia',
     email: 'jp@example.com',
+    levelTitle: '',
     phone: '5551234567',
     church: 'Central',
     raw: {} as StudentRow['raw'],

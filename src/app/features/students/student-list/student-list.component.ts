@@ -44,13 +44,17 @@ export const LOAD_ERROR_MESSAGE =
 export const DELETE_SUCCESS_MESSAGE = 'Registro eliminado';
 export const DELETE_ERROR_MESSAGE = 'Hubo un error con el registro';
 export const STUDENT_FALLBACK = '—';
+export const NO_LEVEL_LABEL = 'No asignado';
 
 export interface StudentRow {
   id: number;
   name: string;
   parentLastName: string;
   motherLastName: string;
+  /** Not shown in the table; still used by the delete confirmation summary. */
   email: string;
+  /** Level title, or an empty string when the student has no assigned level. */
+  levelTitle: string;
   phone: string;
   church: string;
   raw: UserDto;
@@ -90,7 +94,7 @@ export class StudentListComponent implements OnInit, AfterViewInit {
     'name',
     'parentLastName',
     'motherLastName',
-    'email',
+    'levelTitle',
     'phone',
     'church',
     'actions',
@@ -108,7 +112,7 @@ export class StudentListComponent implements OnInit, AfterViewInit {
     { header: 'Nombre(s)', key: 'name', value: (r) => this.exportCell(r.name) },
     { header: 'Paterno', key: 'parentLastName', value: (r) => this.exportCell(r.parentLastName) },
     { header: 'Materno', key: 'motherLastName', value: (r) => this.exportCell(r.motherLastName) },
-    { header: 'Email', key: 'email', value: (r) => this.exportCell(r.email) },
+    { header: 'Nivel', key: 'levelTitle', value: (r) => r.levelTitle },
     { header: 'Teléfono', key: 'phone', value: (r) => this.exportCell(r.phone) },
     { header: 'Iglesia', key: 'church', value: (r) => this.exportCell(r.church) },
   ];
@@ -132,7 +136,7 @@ export class StudentListComponent implements OnInit, AfterViewInit {
         row.name,
         row.parentLastName,
         row.motherLastName,
-        row.email,
+        row.levelTitle || NO_LEVEL_LABEL,
         row.phone,
         row.church,
       ]
@@ -281,6 +285,7 @@ export class StudentListComponent implements OnInit, AfterViewInit {
       parentLastName: this.fallback(profile.parentLastName),
       motherLastName: this.fallback(profile.motherLastName),
       email: this.fallback(profile.email),
+      levelTitle: user.level?.title?.trim() ?? '',
       phone: this.fallback(profile.phone),
       church: this.fallback(profile.church),
       raw: user,

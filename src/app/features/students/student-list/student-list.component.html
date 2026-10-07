@@ -89,9 +89,18 @@
             <td mat-cell *matCellDef="let row">{{ row.motherLastName }}</td>
           </ng-container>
 
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Email</th>
-            <td mat-cell *matCellDef="let row">{{ row.email }}</td>
+          <ng-container matColumnDef="levelTitle">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Nivel</th>
+            <td mat-cell *matCellDef="let row">
+              @if (row.levelTitle) {
+                {{ row.levelTitle }}
+              } @else {
+                <span class="student-list__level-missing">
+                  <mat-icon aria-hidden="true">error_outline</mat-icon>
+                  No asignado
+                </span>
+              }
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="phone">

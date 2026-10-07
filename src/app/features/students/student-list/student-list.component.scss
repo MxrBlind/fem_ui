@@ -42,6 +42,21 @@
   width: 100%;
 }
 
+.student-list__level-missing {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  gap: 4px;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--mat-sys-error);
+  }
+}
+
 .student-list__empty {
   display: flex;
   flex-direction: column;
