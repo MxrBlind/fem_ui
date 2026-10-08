@@ -140,6 +140,7 @@ describe('StudentService', () => {
       username: 'jdoe',
       password: 'secret12',
       role: { id: 3 },
+      level: { id: 2 },
       profile: {
         name: 'Juan',
         parentLastName: 'Doe',
