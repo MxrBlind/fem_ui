@@ -8,22 +8,31 @@ import {
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { By } from '@angular/platform-browser';
 
 import { environment } from '../../../../environments/environment';
 import { UserDto } from '@core/models/auth.model';
+import { LevelDto } from '@features/enrollments/models/enrollment.model';
 import {
   ERROR_MESSAGE,
+  LOAD_ERROR_MESSAGE,
   StudentEditComponent,
   SUCCESS_MESSAGE,
 } from './student-edit.component';
 
 const USER_URL = (id: number): string =>
   `${environment.apiBaseUrl}/api/user/${id}`;
+const LEVELS_URL = `${environment.apiBaseUrl}/api/level`;
+
+function makeLevel(id: number, title = `Nivel ${id}`): LevelDto {
+  return { id, title, code: `LVL${id}` };
+}
 
 function makeUser(): UserDto {
   return {
     id: 42,
     username: 'jdoe',
+    level: makeLevel(2, 'Licenciatura'),
     profile: {
       name: 'Juan',
       parentLastName: 'Doe',
@@ -45,7 +54,10 @@ interface Harness {
   user: UserDto;
 }
 
-function setup(userOverride?: UserDto): Harness {
+function setup(
+  userOverride?: UserDto,
+  options: { skipFlush?: boolean; failLoad?: boolean } = {}
+): Harness {
   const user = userOverride ?? makeUser();
   const dialogRef = { close: vi.fn() };
 
@@ -69,6 +81,20 @@ function setup(userOverride?: UserDto): Harness {
     .mockReturnValue({} as never);
   fixture.detectChanges();
   const http = TestBed.inject(HttpTestingController);
+
+  if (!options.skipFlush) {
+    const levelsReq = http.expectOne(LEVELS_URL);
+    if (options.failLoad) {
+      levelsReq.flush('boom', { status: 500, statusText: 'Server Error' });
+    } else {
+      levelsReq.flush([
+        makeLevel(1, 'Maestría'),
+        makeLevel(2, 'Licenciatura'),
+        makeLevel(3, 'Diplomado'),
+      ]);
+    }
+    fixture.detectChanges();
+  }
 
   return { fixture, http, dialogRef, snackOpen, user };
 }
@@ -188,6 +214,7 @@ describe('StudentEditComponent', () => {
       expect(req.request.body).toEqual({
         username: 'jdoe',
         role: { id: 3 },
+        level: { id: 2 },
         profile: {
           name: 'Juan',
           parentLastName: 'Doe',
@@ -262,10 +289,177 @@ describe('StudentEditComponent', () => {
       expect(fixture.componentInstance.form.controls.username.disabled).toBe(
         true
       );
+      expect(fixture.componentInstance.levelText.enabled).toBe(true);
       expect(errSpy).toHaveBeenCalledWith(
         '[student-edit] failed to update student',
         expect.anything()
       );
+      errSpy.mockRestore();
+    });
+  });
+
+  describe('level field', () => {
+    const submitBtn = (f: ComponentFixture<StudentEditComponent>) =>
+      f.debugElement.query(By.css('[data-testid="student-edit-submit"]'))
+        .nativeElement as HTMLButtonElement;
+
+    function makeUserWithoutLevel(): UserDto {
+      const { level: _level, ...rest } = makeUser();
+      return rest;
+    }
+
+    it('renders Nivel after Apellido materno and before Fecha de nacimiento', () => {
+      const { fixture } = setup();
+      const labels = fixture.debugElement
+        .queryAll(By.css('mat-label'))
+        .map((l) => (l.nativeElement.textContent ?? '').trim());
+      expect(labels.slice(4, 7)).toEqual([
+        'Apellido materno',
+        'Nivel',
+        'Fecha de nacimiento',
+      ]);
+    });
+
+    it('requests the level catalog once on open and enables the form', () => {
+      const { fixture } = setup();
+      const c = fixture.componentInstance;
+      expect(c.loading()).toBe(false);
+      expect(c.loadFailed()).toBe(false);
+      expect(c.levels().length).toBe(3);
+      expect(c.form.controls.name.enabled).toBe(true);
+      expect(c.form.controls.username.disabled).toBe(true);
+      expect(fixture.nativeElement.querySelector('mat-progress-bar')).toBeNull();
+    });
+
+    it('prefills levelId and the visible text from user.level', () => {
+      const { fixture } = setup();
+      const c = fixture.componentInstance;
+      expect(c.form.controls.levelId.value).toBe(2);
+      expect(c.levelText.value).toBe('Licenciatura');
+    });
+
+    it('leaves levelId and the text empty when the user has no level', () => {
+      const { fixture } = setup(makeUserWithoutLevel());
+      const c = fixture.componentInstance;
+      expect(c.form.controls.levelId.value).toBeNull();
+      expect(c.levelText.value).toBe('');
+    });
+
+    it('blocks submit for a user without level until one is selected', () => {
+      const { fixture, http } = setup(makeUserWithoutLevel());
+      const c = fixture.componentInstance;
+      fixture.detectChanges();
+      expect(c.form.invalid).toBe(true);
+      expect(submitBtn(fixture).disabled).toBe(true);
+      c.onSubmit();
+      http.expectNone(USER_URL(42));
+
+      c.onLevelSelected(makeLevel(3, 'Diplomado'));
+      fixture.detectChanges();
+      expect(c.form.valid).toBe(true);
+      expect(submitBtn(fixture).disabled).toBe(false);
+    });
+
+    it('shows "Selecciona un nivel." when touched and empty', () => {
+      const { fixture } = setup(makeUserWithoutLevel());
+      fixture.componentInstance.levelText.markAsTouched();
+      fixture.componentInstance.levelText.updateValueAndValidity();
+      fixture.detectChanges();
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        'Selecciona un nivel.'
+      );
+    });
+
+    it('filters levels by title case-insensitively', () => {
+      const { fixture } = setup();
+      fixture.componentInstance.onLevelInput('LICEN');
+      expect(
+        fixture.componentInstance.filteredLevels().map((l) => l.id)
+      ).toEqual([2]);
+      fixture.componentInstance.onLevelInput('');
+      expect(fixture.componentInstance.filteredLevels().length).toBe(3);
+    });
+
+    it('selecting a level sets levelId and the displayed title', () => {
+      const { fixture } = setup();
+      fixture.componentInstance.onLevelSelected(makeLevel(3, 'Diplomado'));
+      expect(fixture.componentInstance.form.controls.levelId.value).toBe(3);
+      expect(fixture.componentInstance.levelText.value).toBe('Diplomado');
+    });
+
+    it('typing a non-matching value clears levelId', () => {
+      const { fixture } = setup();
+      fixture.componentInstance.onLevelInput('Licen');
+      expect(fixture.componentInstance.form.controls.levelId.value).toBeNull();
+      expect(fixture.componentInstance.form.invalid).toBe(true);
+    });
+
+    it('sends level: { id } unchanged when the level was not touched', () => {
+      const { fixture, http, user } = setup();
+      fixture.componentInstance.onSubmit();
+      const req = http.expectOne(USER_URL(user.id));
+      expect(req.request.body.level).toEqual({ id: 2 });
+      req.flush(user);
+    });
+
+    it('sends level: { id } of the newly selected level', () => {
+      const { fixture, http, user } = setup();
+      fixture.componentInstance.onLevelSelected(makeLevel(3, 'Diplomado'));
+      fixture.componentInstance.onSubmit();
+      const req = http.expectOne(USER_URL(user.id));
+      expect(req.request.body.level).toEqual({ id: 3 });
+      req.flush(user);
+    });
+
+    it('does not submit without a level', () => {
+      const { fixture, http, user } = setup();
+      fixture.componentInstance.form.controls.levelId.setValue(null);
+      fixture.componentInstance.onSubmit();
+      http.expectNone(USER_URL(user.id));
+    });
+  });
+
+  describe('level catalog loading', () => {
+    const submitBtn = (f: ComponentFixture<StudentEditComponent>) =>
+      f.debugElement.query(By.css('[data-testid="student-edit-submit"]'))
+        .nativeElement as HTMLButtonElement;
+
+    it('shows the progress bar and keeps the form and Actualizar disabled while loading', () => {
+      const { fixture, http } = setup(undefined, { skipFlush: true });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.loading()).toBe(true);
+      expect(fixture.componentInstance.form.disabled).toBe(true);
+      const bar = fixture.nativeElement.querySelector('mat-progress-bar');
+      expect(bar).not.toBeNull();
+      expect(bar.getAttribute('aria-label')).toBeTruthy();
+      expect(submitBtn(fixture).disabled).toBe(true);
+      http.expectOne(LEVELS_URL).flush([]);
+    });
+
+    it('opens the load-error snackbar, logs, keeps the form disabled and never updates when loading fails', () => {
+      const errSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const { fixture, http, snackOpen, user } = setup(undefined, {
+        failLoad: true,
+      });
+      expect(fixture.componentInstance.loadFailed()).toBe(true);
+      expect(snackOpen).toHaveBeenCalledWith(
+        LOAD_ERROR_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({
+          duration: 3000,
+          panelClass: 'snackbar-error',
+        })
+      );
+      expect(errSpy).toHaveBeenCalledWith(
+        '[student-edit] failed to load form data',
+        expect.anything()
+      );
+      expect(fixture.componentInstance.form.disabled).toBe(true);
+      expect(submitBtn(fixture).disabled).toBe(true);
+      fixture.componentInstance.onSubmit();
+      http.expectNone(USER_URL(user.id));
       errSpy.mockRestore();
     });
   });

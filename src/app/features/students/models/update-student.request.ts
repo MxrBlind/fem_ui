@@ -16,5 +16,6 @@ export interface UpdateStudentRequest {
   username: string;
   password?: string;
   role: { id: typeof STUDENT_ROLE_ID };
+  level: { id: number };
   profile: UpdateStudentProfile;
 }
