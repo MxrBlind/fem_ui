@@ -1,6 +1,10 @@
 <h2 mat-dialog-title>Crear estudiante</h2>
 
 <mat-dialog-content class="student-new__content">
+  @if (loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Cargando datos del formulario" />
+  }
+
   <form [formGroup]="form" (ngSubmit)="onSubmit()" class="student-new__form">
     <mat-form-field appearance="outline">
       <mat-label>Username</mat-label>
@@ -69,6 +73,31 @@
     </mat-form-field>
 
     <mat-form-field appearance="outline">
+      <mat-label>Nivel</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        required
+        [formControl]="levelText"
+        [matAutocomplete]="levelAuto"
+        (input)="onLevelInput(($any($event.target)).value)"
+      />
+      <mat-autocomplete
+        #levelAuto="matAutocomplete"
+        [displayWith]="displayLevel"
+        (optionSelected)="onLevelSelected($event.option.value)"
+      >
+        @for (level of filteredLevels(); track level.id) {
+          <mat-option [value]="level">{{ displayLevel(level) }}</mat-option>
+        }
+      </mat-autocomplete>
+      @if (levelText.hasError('required')) {
+        <mat-error>Selecciona un nivel.</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
       <mat-label>Fecha de nacimiento</mat-label>
       <input
         matInput
@@ -133,7 +162,7 @@
     type="button"
     data-testid="student-new-submit"
     (click)="onSubmit()"
-    [disabled]="form.invalid || saving()"
+    [disabled]="form.invalid || saving() || loading() || loadFailed()"
   >
     @if (saving()) {
       <mat-progress-spinner

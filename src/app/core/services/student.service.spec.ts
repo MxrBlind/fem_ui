@@ -107,6 +107,7 @@ describe('StudentService', () => {
         phone: '5551234567',
       },
       role: { id: 3 },
+      level: { id: 2 },
     };
 
     it('POSTs to /api/user with the exact payload and forwards the response', () => {
