@@ -14,4 +14,5 @@ export interface CreateStudentRequest {
   password: string;
   profile: CreateStudentProfile;
   role: { id: number };
+  level: { id: number };
 }
