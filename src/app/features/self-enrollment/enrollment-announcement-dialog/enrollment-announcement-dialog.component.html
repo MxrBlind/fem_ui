@@ -1,0 +1,21 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+<mat-dialog-content>
+  <p class="mat-body-large" data-testid="enrollment-announcement-message">{{ message }}</p>
+</mat-dialog-content>
+<mat-dialog-actions class="enrollment-announcement__actions">
+  <mat-checkbox
+    data-testid="enrollment-announcement-dont-show"
+    [checked]="dontShowAgain()"
+    (change)="dontShowAgain.set($event.checked)"
+  >
+    {{ dontShowAgainLabel }}
+  </mat-checkbox>
+  <button
+    mat-flat-button
+    type="button"
+    data-testid="enrollment-announcement-close"
+    (click)="close()"
+  >
+    {{ closeLabel }}
+  </button>
+</mat-dialog-actions>

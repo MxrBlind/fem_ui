@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, shareReplay } from 'rxjs';
+import { Observable, map, shareReplay } from 'rxjs';
 
 import { environment } from '@env/environment';
 import {
@@ -23,6 +23,14 @@ export class CycleService {
 
   getCurrent(): Observable<CycleDto> {
     return this.current$;
+  }
+
+  // Not cached: the open-for-enrollment flag is exactly what changes between
+  // sessions, so a stale value would hide a newly opened cycle.
+  getOpenForEnrollment(): Observable<CycleDto | null> {
+    return this.http
+      .get<CycleDto[]>(`${this.baseUrl}/openForEnrollment`)
+      .pipe(map((cycles) => cycles[0] ?? null));
   }
 
   getAll(): Observable<CycleDto[]> {
