@@ -12,7 +12,7 @@ export const DONT_SHOW_AGAIN_LABEL = 'No volver a mostrar';
 export const CLOSE_LABEL = 'Cerrar';
 
 export function buildAnnouncementMessage(description: string): string {
-  return `El ciclo ${description} está abierto para inscripciones. Utiliza la opción del menú 'Inscripciones' para seleccionar tus siguientes materias`;
+  return `El ciclo ${description} está abierto para inscripciones. Utiliza la opción del menú 'Preinscripciones' para seleccionar tus siguientes materias`;
 }
 
 export interface EnrollmentAnnouncementDialogData {

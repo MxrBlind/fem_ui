@@ -72,7 +72,7 @@ describe('EnrollmentAnnouncementDialogComponent', () => {
 
   it('builds the announcement message with the cycle description', () => {
     expect(buildAnnouncementMessage('2026-B')).toBe(
-      "El ciclo 2026-B está abierto para inscripciones. Utiliza la opción del menú 'Inscripciones' para seleccionar tus siguientes materias"
+      "El ciclo 2026-B está abierto para inscripciones. Utiliza la opción del menú 'Preinscripciones' para seleccionar tus siguientes materias"
     );
   });
 
