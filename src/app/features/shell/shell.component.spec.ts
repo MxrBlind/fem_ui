@@ -1,11 +1,12 @@
 import { vi } from 'vitest';
-import { signal } from '@angular/core';
+import { DestroyRef, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 
 import { AuthService } from '../../core/services/auth.service';
 import { AuthUser } from '../../core/auth/rbac';
+import { EnrollmentAnnouncementService } from '../self-enrollment/services/enrollment-announcement.service';
 import { ShellComponent } from './shell.component';
 
 const admin: AuthUser = {
@@ -22,6 +23,7 @@ const student: AuthUser = { id: 3, username: 'student_user', role: 'student', ra
 function setup(user: AuthUser | null) {
   const currentUser = signal<AuthUser | null>(user);
   const logoutSpy = vi.fn();
+  const checkAndAnnounceSpy = vi.fn();
   const fakeAuth = {
     currentUser: currentUser.asReadonly(),
     logout: logoutSpy,
@@ -31,6 +33,7 @@ function setup(user: AuthUser | null) {
     imports: [ShellComponent],
     providers: [
       { provide: AuthService, useValue: fakeAuth },
+      { provide: EnrollmentAnnouncementService, useValue: { checkAndAnnounce: checkAndAnnounceSpy } },
       provideRouter([]),
       provideAnimationsAsync(),
     ],
@@ -41,6 +44,9 @@ function setup(user: AuthUser | null) {
   (fixture as ComponentFixture<ShellComponent> & {
     logoutSpy: ReturnType<typeof vi.fn>;
   }).logoutSpy = logoutSpy;
+  (fixture as ComponentFixture<ShellComponent> & {
+    checkAndAnnounceSpy: ReturnType<typeof vi.fn>;
+  }).checkAndAnnounceSpy = checkAndAnnounceSpy;
   return fixture;
 }
 
@@ -411,6 +417,20 @@ describe('ShellComponent', () => {
 
       expect(onProfileActionSpy).toHaveBeenCalledWith('perfil');
       expect(navSpy).toHaveBeenCalledWith(['/mi-perfil']);
+    });
+  });
+
+  describe('self-enrollment announcement', () => {
+    it.each([
+      ['student', student],
+      ['admin', admin],
+    ])('calls checkAndAnnounce exactly once on init with a DestroyRef (%s)', (_label, user) => {
+      const fixture = setup(user) as ComponentFixture<ShellComponent> & {
+        checkAndAnnounceSpy: ReturnType<typeof vi.fn>;
+      };
+      fixture.detectChanges();
+      expect(fixture.checkAndAnnounceSpy).toHaveBeenCalledTimes(1);
+      expect(fixture.checkAndAnnounceSpy.mock.calls[0][0]).toBeInstanceOf(DestroyRef);
     });
   });
 });
