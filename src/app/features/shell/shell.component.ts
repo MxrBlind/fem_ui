@@ -49,6 +49,9 @@ export class ShellComponent implements OnInit {
 
   readonly user = this.auth.currentUser;
   readonly sidenavOpen = signal(true);
+  // Cycle open for enrollment as published by the announcement check; drives
+  // the student-only "Preinscripciones" menu link.
+  readonly openCycle = this.enrollmentAnnouncement.openCycle;
 
   readonly initial = computed(() => {
     const u = this.user();

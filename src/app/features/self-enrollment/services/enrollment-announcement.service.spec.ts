@@ -194,4 +194,61 @@ describe('EnrollmentAnnouncementService', () => {
     response$.next(openCycle);
     expect(dialog.open).not.toHaveBeenCalled();
   });
+
+  describe('openCycle', () => {
+    it('is null before any check', () => {
+      expect(service.openCycle()).toBeNull();
+    });
+
+    it('publishes the open cycle for a student', () => {
+      service.checkAndAnnounce(destroyRef);
+      expect(service.openCycle()).toEqual(openCycle);
+    });
+
+    it('keeps publishing the cycle when the student dismissed it (no dialog)', () => {
+      localStorage.setItem(keyFor(STUDENT_ID), '10');
+      service.checkAndAnnounce(destroyRef);
+      expect(dialog.open).not.toHaveBeenCalled();
+      expect(service.openCycle()).toEqual(openCycle);
+    });
+
+    it('is null when no cycle is open', () => {
+      respondWith(of(null));
+      service.checkAndAnnounce(destroyRef);
+      expect(service.openCycle()).toBeNull();
+    });
+
+    it.each([409, 500, 0])('is null when the request fails with status %s', (status) => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      respondWith(throwError(() => new HttpErrorResponse({ status })));
+      service.checkAndAnnounce(destroyRef);
+      expect(service.openCycle()).toBeNull();
+    });
+
+    it.each<Role>(['admin', 'teacher', 'principal'])(
+      'is null and sends no request for role %s',
+      (role) => {
+        currentUser.set(user(role));
+        service.checkAndAnnounce(destroyRef);
+        expect(cycleService.getOpenForEnrollment).not.toHaveBeenCalled();
+        expect(service.openCycle()).toBeNull();
+      }
+    );
+
+    it('resets a cycle left by a previous student when a non-student checks (no leak across sessions)', () => {
+      service.checkAndAnnounce(destroyRef);
+      expect(service.openCycle()).toEqual(openCycle);
+
+      currentUser.set(user('admin', 1));
+      service.checkAndAnnounce(destroyRef);
+      expect(service.openCycle()).toBeNull();
+    });
+
+    it('resets the cycle when there is no current user', () => {
+      service.checkAndAnnounce(destroyRef);
+      currentUser.set(null);
+      service.checkAndAnnounce(destroyRef);
+      expect(service.openCycle()).toBeNull();
+    });
+  });
 });

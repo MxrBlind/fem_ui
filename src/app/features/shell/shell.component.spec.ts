@@ -6,6 +6,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 
 import { AuthService } from '../../core/services/auth.service';
 import { AuthUser } from '../../core/auth/rbac';
+import { CycleDto } from '../enrollments/models/cycle.model';
 import { EnrollmentAnnouncementService } from '../self-enrollment/services/enrollment-announcement.service';
 import { ShellComponent } from './shell.component';
 
@@ -20,8 +21,17 @@ const admin: AuthUser = {
 const teacher: AuthUser = { id: 2, username: 'teacher_user', role: 'teacher', rawRole: 'teacher' };
 const student: AuthUser = { id: 3, username: 'student_user', role: 'student', rawRole: 'student' };
 
-function setup(user: AuthUser | null) {
+const openCycle: CycleDto = {
+  id: 10,
+  description: '2026-B',
+  startDate: '2026-07-01T00:00:00Z',
+  endDate: '2026-12-15T00:00:00Z',
+  openForEnrollment: true,
+};
+
+function setup(user: AuthUser | null, initialOpenCycle: CycleDto | null = null) {
   const currentUser = signal<AuthUser | null>(user);
+  const openCycleState = signal<CycleDto | null>(initialOpenCycle);
   const logoutSpy = vi.fn();
   const checkAndAnnounceSpy = vi.fn();
   const fakeAuth = {
@@ -33,7 +43,13 @@ function setup(user: AuthUser | null) {
     imports: [ShellComponent],
     providers: [
       { provide: AuthService, useValue: fakeAuth },
-      { provide: EnrollmentAnnouncementService, useValue: { checkAndAnnounce: checkAndAnnounceSpy } },
+      {
+        provide: EnrollmentAnnouncementService,
+        useValue: {
+          checkAndAnnounce: checkAndAnnounceSpy,
+          openCycle: openCycleState.asReadonly(),
+        },
+      },
       provideRouter([]),
       provideAnimationsAsync(),
     ],
@@ -47,6 +63,9 @@ function setup(user: AuthUser | null) {
   (fixture as ComponentFixture<ShellComponent> & {
     checkAndAnnounceSpy: ReturnType<typeof vi.fn>;
   }).checkAndAnnounceSpy = checkAndAnnounceSpy;
+  (fixture as ComponentFixture<ShellComponent> & {
+    openCycleState: typeof openCycleState;
+  }).openCycleState = openCycleState;
   return fixture;
 }
 
@@ -173,6 +192,50 @@ describe('ShellComponent', () => {
     it('1.12c absent for teacher', () => {
       const fixture = setup(teacher);
       expect(textVisible(fixture, 'Calificaciones')).toBe(false);
+    });
+  });
+
+  describe('"Preinscripciones" link', () => {
+    function findLink(fixture: ComponentFixture<ShellComponent>): HTMLAnchorElement | undefined {
+      return Array.from(qAll(fixture, 'a[mat-list-item]')).find((el) =>
+        (el.textContent ?? '').includes('Preinscripciones')
+      ) as HTMLAnchorElement | undefined;
+    }
+
+    it('visible for a student when a cycle is open and routes to /preinscripciones', () => {
+      const fixture = setup(student, openCycle);
+      const link = findLink(fixture);
+      expect(link).toBeTruthy();
+      expect(link!.getAttribute('href')).toBe('/preinscripciones');
+    });
+
+    it('absent for a student when no cycle is open', () => {
+      const fixture = setup(student, null);
+      expect(textVisible(fixture, 'Preinscripciones')).toBe(false);
+    });
+
+    it('appears and disappears as the published open cycle changes', () => {
+      const fixture = setup(student, null) as ComponentFixture<ShellComponent> & {
+        openCycleState: ReturnType<typeof signal<CycleDto | null>>;
+      };
+      expect(findLink(fixture)).toBeUndefined();
+
+      fixture.openCycleState.set(openCycle);
+      fixture.detectChanges();
+      expect(findLink(fixture)).toBeTruthy();
+
+      fixture.openCycleState.set(null);
+      fixture.detectChanges();
+      expect(findLink(fixture)).toBeUndefined();
+    });
+
+    it.each([
+      ['admin', admin],
+      ['teacher', teacher],
+      ['principal', { id: 4, username: 'p', role: 'principal', rawRole: 'principal' } as AuthUser],
+    ])('never visible for %s, even if a cycle is published', (_label, user) => {
+      const fixture = setup(user, openCycle);
+      expect(textVisible(fixture, 'Preinscripciones')).toBe(false);
     });
   });
 

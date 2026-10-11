@@ -7,6 +7,8 @@ import { environment } from '../../../environments/environment';
 import {
   CreateEnrollmentRequest,
   EnrollmentDto,
+  SelfEnrollmentRequest,
+  SelfEnrollmentResult,
 } from '../../features/enrollments/models/enrollment.model';
 import { EnrollmentService, toRow } from './enrollment.service';
 
@@ -93,6 +95,52 @@ describe('EnrollmentService', () => {
       http
         .expectOne(`${environment.apiBaseUrl}/api/enrollment`)
         .flush('boom', { status: 500, statusText: 'Server Error' });
+      await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+    });
+  });
+
+  describe('listMyByCycle()', () => {
+    it('issues GET /api/enrollment/cycle/{cycleId} and returns the DTO array unchanged', async () => {
+      const dtos = [buildDto({ id: 5 })];
+      const promise = firstValueFrom(service.listMyByCycle(12));
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/enrollment/cycle/12`);
+      expect(req.request.method).toBe('GET');
+      req.flush(dtos);
+      await expect(promise).resolves.toEqual(dtos);
+    });
+
+    it('surfaces errors via the observable error channel', async () => {
+      const promise = firstValueFrom(service.listMyByCycle(12));
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment/cycle/12`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+    });
+  });
+
+  describe('selfEnroll()', () => {
+    const payload: SelfEnrollmentRequest = {
+      cycleId: 12,
+      studentId: 345,
+      courseIds: [101, 102],
+      paymentMode: 'MULTIPLE',
+    };
+
+    it('issues POST /api/enrollment/self with the payload and returns the result', async () => {
+      const result: SelfEnrollmentResult = { created: [buildDto({ id: 7 })], skippedCourseIds: [] };
+      const promise = firstValueFrom(service.selfEnroll(payload));
+      const req = http.expectOne(`${environment.apiBaseUrl}/api/enrollment/self`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(payload);
+      req.flush(result);
+      await expect(promise).resolves.toEqual(result);
+    });
+
+    it('surfaces errors via the observable error channel', async () => {
+      const promise = firstValueFrom(service.selfEnroll(payload));
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment/self`)
+        .flush('Conflict', { status: 409, statusText: 'Conflict' });
       await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
     });
   });

@@ -1,3 +1,5 @@
+import { roleGuard } from '@core/auth/auth.guards';
+import { SelfEnrollmentComponent } from '../self-enrollment/self-enrollment/self-enrollment.component';
 import { SHELL_ROUTES } from './shell.routes';
 
 describe('SHELL_ROUTES', () => {
@@ -29,5 +31,14 @@ describe('SHELL_ROUTES', () => {
     expect(route?.data?.['roles']).toEqual(['admin']);
     expect(route?.loadComponent).toBeDefined();
     expect(route?.canMatch?.length).toBeGreaterThan(0);
+  });
+
+  it('exposes the self-enrollment page under the "preinscripciones" path, student-only', async () => {
+    const route = SHELL_ROUTES.find((r) => r.path === 'preinscripciones');
+    expect(route).toBeDefined();
+    expect(route?.data?.['roles']).toEqual(['student']);
+    expect(route?.canMatch).toEqual([roleGuard]);
+    const loaded = await (route?.loadComponent as () => Promise<unknown>)();
+    expect(loaded).toBe(SelfEnrollmentComponent);
   });
 });
