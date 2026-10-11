@@ -1,0 +1,86 @@
+<mat-card class="self-enrollment">
+  <mat-card-header>
+    <mat-card-title>Preinscripciones</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (loading()) {
+      <div class="self-enrollment__loading" data-testid="loading">
+        <mat-progress-spinner mode="indeterminate" diameter="48" />
+      </div>
+    } @else if (loadFailed()) {
+      <!-- The failure is reported through the snackbar; nothing else is rendered. -->
+    } @else if (cycle(); as openCycle) {
+      <form
+        [formGroup]="form"
+        (ngSubmit)="onSubmit()"
+        class="self-enrollment__form"
+        data-testid="self-enrollment-form"
+      >
+        <p
+          class="mat-body-large self-enrollment__label"
+          [id]="coursesLabelId"
+          data-testid="courses-label"
+        >
+          Materias disponibles para el ciclo {{ openCycle.description }}:
+        </p>
+
+        <div
+          class="self-enrollment__courses"
+          role="group"
+          [attr.aria-labelledby]="coursesLabelId"
+          data-testid="courses-group"
+        >
+          @for (row of courseRows(); track row.id) {
+            <mat-checkbox
+              [attr.data-testid]="'course-checkbox-' + row.id"
+              [checked]="row.checked"
+              [disabled]="row.enrolled"
+              (change)="toggleCourse(row.id, $event.checked)"
+            >
+              {{ row.label }}
+            </mat-checkbox>
+          } @empty {
+            <div class="self-enrollment__empty" data-testid="no-courses">
+              <mat-icon aria-hidden="true">inbox</mat-icon>
+              <p class="mat-body-large">{{ noCoursesMessage }}</p>
+            </div>
+          }
+        </div>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Forma de pago</mat-label>
+          <mat-select formControlName="paymentMode" data-testid="payment-mode-select">
+            @for (option of paymentModeOptions; track option.value) {
+              <mat-option [value]="option.value">{{ option.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <div class="self-enrollment__actions">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            [disabled]="!canSubmit()"
+            data-testid="submit-button"
+          >
+            @if (saving()) {
+              <mat-progress-spinner
+                mode="indeterminate"
+                diameter="18"
+                class="self-enrollment__spinner"
+              />
+            }
+            Enviar
+          </button>
+        </div>
+      </form>
+    } @else {
+      <div class="self-enrollment__empty" data-testid="no-open-cycle">
+        <mat-icon aria-hidden="true">event_busy</mat-icon>
+        <p class="mat-body-large">{{ noOpenCycleMessage }}</p>
+      </div>
+    }
+  </mat-card-content>
+</mat-card>

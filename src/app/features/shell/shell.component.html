@@ -52,6 +52,9 @@
         <a mat-list-item routerLink="/inscripciones" routerLinkActive="active" *hasRole="['admin', 'teacher']">Inscripciones</a>
         <a mat-list-item routerLink="/ciclos" routerLinkActive="active" *hasRole="['admin']">Ciclos</a>
         <a mat-list-item routerLink="/grades" routerLinkActive="active" *hasRole="['student']">Calificaciones</a>
+        @if (openCycle()) {
+          <a mat-list-item routerLink="/preinscripciones" routerLinkActive="active" *hasRole="['student']">Preinscripciones</a>
+        }
       </ng-container>
 
       <ng-container *hasRole="['admin']">

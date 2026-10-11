@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject } from '@angular/core';
+import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 
@@ -22,6 +22,15 @@ export class EnrollmentAnnouncementService {
   private readonly auth = inject(AuthService);
   private readonly cycleService = inject(CycleService);
   private readonly dialog = inject(MatDialog);
+  private readonly openCycleState = signal<CycleDto | null>(null);
+
+  /**
+   * Cycle currently open for enrollment as seen by the last check, or null when
+   * none is open, the check failed or the user is not a student. Independent of
+   * the announcement dismissal, so the shell can show the "Preinscripciones"
+   * menu link without a second request.
+   */
+  readonly openCycle = this.openCycleState.asReadonly();
 
   /**
    * Shows the "cycle open for enrollment" dialog to students who have not
@@ -30,6 +39,10 @@ export class EnrollmentAnnouncementService {
    * as an expired session.
    */
   checkAndAnnounce(destroyRef: DestroyRef): void {
+    // This service outlives the shell, so reset the state on every check to
+    // avoid leaking a previous student's cycle into the next session.
+    this.openCycleState.set(null);
+
     const user = this.auth.currentUser();
     if (user?.role !== 'student') return;
 
@@ -39,6 +52,7 @@ export class EnrollmentAnnouncementService {
       .subscribe({
         next: (cycle) => {
           if (!cycle || cycle.id == null) return;
+          this.openCycleState.set(cycle);
           if (this.isDismissed(user.id, cycle.id)) return;
           this.openDialog(user.id, cycle);
         },

@@ -1,0 +1,53 @@
+.self-enrollment {
+  display: block;
+  max-width: 640px;
+  margin: 24px auto;
+}
+
+.self-enrollment__loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.self-enrollment__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.self-enrollment__label {
+  margin: 0;
+}
+
+.self-enrollment__courses {
+  display: flex;
+  flex-direction: column;
+}
+
+.self-enrollment__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 0;
+  color: var(--mat-sys-on-surface-variant);
+
+  p {
+    margin: 0;
+  }
+}
+
+.self-enrollment__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.self-enrollment__spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

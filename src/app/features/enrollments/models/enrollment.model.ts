@@ -47,6 +47,7 @@ export interface EnrollmentDto {
   scholarshipPercent?: number;
   grade?: number;
   startDate?: string;
+  paymentMode?: string;
 }
 
 export interface CreateEnrollmentRequest {
@@ -54,6 +55,20 @@ export interface CreateEnrollmentRequest {
   course: { id: number };
   scholarshipPercent: number;
   active: true;
+}
+
+export type PaymentMode = 'SINGLE' | 'MULTIPLE';
+
+export interface SelfEnrollmentRequest {
+  cycleId: number;
+  studentId: number;
+  courseIds: number[];
+  paymentMode: PaymentMode;
+}
+
+export interface SelfEnrollmentResult {
+  created: EnrollmentDto[];
+  skippedCourseIds: number[];
 }
 
 export interface CreateCourseRequest {
