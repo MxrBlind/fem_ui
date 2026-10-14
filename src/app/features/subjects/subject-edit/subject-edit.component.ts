@@ -38,6 +38,7 @@ import {
   SubjectDto,
 } from '@features/enrollments/models/enrollment.model';
 import { UpdateSubjectRequest } from '@features/subjects/models/update-subject.request';
+import { showSaveError } from '@core/errors/field-errors';
 
 export const SUCCESS_MESSAGE = 'Registro actualizado exitosamente';
 export const ERROR_MESSAGE = 'Error al actualizar este registro';
@@ -254,12 +255,9 @@ export class SubjectEditComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[subject-edit] failed to update subject', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
-            duration: 3000,
-            panelClass: 'snackbar-error',
-          });
           this.saving.set(false);
           this.form.enable();
+          showSaveError(this.form, err, ERROR_MESSAGE, this.snackBar);
         },
       });
   }

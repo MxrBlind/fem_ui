@@ -36,6 +36,7 @@ import {
   CreateCourseRequest,
   SubjectDto,
 } from '@features/enrollments/models/enrollment.model';
+import { showSaveError } from '@core/errors/field-errors';
 
 export const SUCCESS_MESSAGE = 'Curso creado exitosamente';
 export const ERROR_MESSAGE = 'Error al crear este registro';
@@ -234,12 +235,9 @@ export class CourseNewComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[course-new] failed to create course', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
-            duration: 3000,
-            panelClass: 'snackbar-error',
-          });
           this.saving.set(false);
           this.form.enable();
+          showSaveError(this.form, err, ERROR_MESSAGE, this.snackBar);
         },
       });
   }

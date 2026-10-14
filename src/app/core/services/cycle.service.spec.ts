@@ -104,7 +104,7 @@ describe('CycleService', () => {
     const req = http.expectOne(`${environment.apiBaseUrl}/api/cycle`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual(payload);
-    req.flush(created);
+    req.flush(created, { status: 201, statusText: 'Created' });
     await expect(promise).resolves.toEqual(created);
   });
 
@@ -200,5 +200,48 @@ describe('CycleService', () => {
     const third = firstValueFrom(service.getCurrent());
     http.expectNone(`${environment.apiBaseUrl}/api/cycle/current`);
     await expect(third).resolves.toEqual(cycle);
+  });
+  describe('getOpenForEnrollment()', () => {
+    const url = `${environment.apiBaseUrl}/api/cycle/openForEnrollment`;
+    const openCycle: CycleDto = {
+      id: 10,
+      description: '2026-B',
+      startDate: '2026-07-01T00:00:00Z',
+      endDate: '2026-12-15T00:00:00Z',
+      current: true,
+      openForEnrollment: true,
+    };
+
+    it('issues GET /api/cycle/openForEnrollment and emits the single open cycle', async () => {
+      const promise = firstValueFrom(service.getOpenForEnrollment());
+      const req = http.expectOne(url);
+      expect(req.request.method).toBe('GET');
+      req.flush([openCycle]);
+      await expect(promise).resolves.toEqual(openCycle);
+    });
+
+    it('emits null when no cycle is open (empty array)', async () => {
+      const promise = firstValueFrom(service.getOpenForEnrollment());
+      http.expectOne(url).flush([]);
+      await expect(promise).resolves.toBeNull();
+    });
+
+    it('is not cached: each subscription issues a new request', async () => {
+      const first = firstValueFrom(service.getOpenForEnrollment());
+      http.expectOne(url).flush([openCycle]);
+      await first;
+      const second = firstValueFrom(service.getOpenForEnrollment());
+      http.expectOne(url).flush([]);
+      await expect(second).resolves.toBeNull();
+    });
+
+    it('surfaces HTTP errors via the observable error channel', async () => {
+      const promise = firstValueFrom(service.getOpenForEnrollment());
+      http.expectOne(url).flush(
+        { code: 'CYCLE_OPEN_FOR_ENROLLMENT_CONFLICT' },
+        { status: 409, statusText: 'Conflict' }
+      );
+      await expect(promise).rejects.toBeInstanceOf(HttpErrorResponse);
+    });
   });
 });

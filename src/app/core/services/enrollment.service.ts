@@ -8,6 +8,8 @@ import {
   CreateEnrollmentRequest,
   EnrollmentDto,
   EnrollmentRow,
+  SelfEnrollmentRequest,
+  SelfEnrollmentResult,
 } from '@features/enrollments/models/enrollment.model';
 
 @Injectable({ providedIn: 'root' })
@@ -25,6 +27,15 @@ export class EnrollmentService {
 
   create(payload: CreateEnrollmentRequest): Observable<EnrollmentDto> {
     return this.http.post<EnrollmentDto>(this.baseUrl, payload);
+  }
+
+  // The backend scopes this endpoint to the authenticated caller's enrollments.
+  listMyByCycle(cycleId: number): Observable<EnrollmentDto[]> {
+    return this.http.get<EnrollmentDto[]>(`${this.baseUrl}/cycle/${cycleId}`);
+  }
+
+  selfEnroll(payload: SelfEnrollmentRequest): Observable<SelfEnrollmentResult> {
+    return this.http.post<SelfEnrollmentResult>(`${this.baseUrl}/self`, payload);
   }
 
   update(id: number, payload: EnrollmentDto): Observable<EnrollmentDto> {

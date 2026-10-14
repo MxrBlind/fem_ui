@@ -23,6 +23,15 @@ export const SHELL_ROUTES: Routes = [
     loadComponent: () => import('../grades/grades.component').then((m) => m.GradesComponent),
   },
   {
+    path: 'preinscripciones',
+    canMatch: [roleGuard],
+    data: { roles: ['student'] },
+    loadComponent: () =>
+      import('../self-enrollment/self-enrollment/self-enrollment.component').then(
+        (m) => m.SelfEnrollmentComponent
+      ),
+  },
+  {
     path: 'inscripciones',
     canMatch: [roleGuard],
     data: { roles: ['admin', 'teacher'] },

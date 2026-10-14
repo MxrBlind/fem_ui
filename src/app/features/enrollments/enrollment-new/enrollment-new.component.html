@@ -75,6 +75,9 @@
       } @else if (form.controls.scholarshipPercent.hasError('pattern')) {
         <mat-error>El porcentaje debe ser un número entero.</mat-error>
       }
+      @if (form.controls.scholarshipPercent.hasError('server')) {
+        <mat-error>{{ form.controls.scholarshipPercent.getError('server') }}</mat-error>
+      }
     </mat-form-field>
   </form>
 </mat-dialog-content>

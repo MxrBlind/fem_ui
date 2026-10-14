@@ -20,6 +20,9 @@
       } @else if (form.controls.code.hasError('maxlength')) {
         <mat-error>El código no puede exceder 50 caracteres.</mat-error>
       }
+      @if (form.controls.code.hasError('server')) {
+        <mat-error>{{ form.controls.code.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -35,6 +38,9 @@
         <mat-error>El nombre es requerido.</mat-error>
       } @else if (form.controls.description.hasError('maxlength')) {
         <mat-error>El nombre no puede exceder 100 caracteres.</mat-error>
+      }
+      @if (form.controls.description.hasError('server')) {
+        <mat-error>{{ form.controls.description.getError('server') }}</mat-error>
       }
     </mat-form-field>
 

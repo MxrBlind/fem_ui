@@ -70,7 +70,7 @@ describe('SubjectService', () => {
     expect(req.request.body).toEqual(payload);
     expect(typeof req.request.body.category.id).toBe('number');
     expect(typeof req.request.body.level.id).toBe('number');
-    req.flush(created);
+    req.flush(created, { status: 201, statusText: 'Created' });
     await expect(promise).resolves.toEqual(created);
   });
 

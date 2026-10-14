@@ -1,10 +1,12 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, provideRouter } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { NOT_ALLOWED_MESSAGE } from '../errors/error-messages';
 import { AuthService } from '../services/auth.service';
 import { TokenStorageService } from '../services/token-storage.service';
 import { UserDto } from '../models/auth.model';
@@ -26,6 +28,7 @@ describe('authInterceptor', () => {
   let router: Router;
   let navigateSpy: ReturnType<typeof vi.fn>;
   let logoutSpy: ReturnType<typeof vi.fn>;
+  let snackOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -43,6 +46,7 @@ describe('authInterceptor', () => {
     localStorage.clear();
     navigateSpy = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true) as never;
     logoutSpy = vi.spyOn(auth, 'logout');
+    snackOpenSpy = vi.spyOn(TestBed.inject(MatSnackBar), 'open').mockReturnValue(undefined as never) as never;
     tokenStorage.saveToken('tok', '2099-01-01T00:00:00Z');
   });
 
@@ -74,6 +78,19 @@ describe('authInterceptor', () => {
     expect(logoutSpy).toHaveBeenCalled();
   });
 
+  it('401 from /public/ → does NOT logout or navigate and propagates the error', async () => {
+    const p = firstValueFrom(http.post(PUBLIC_URL, {})).catch((e: unknown) => e);
+    httpMock.expectOne(PUBLIC_URL).flush(
+      { status: 401, code: 'BAD_CREDENTIALS', message: 'Invalid username or password' },
+      { status: 401, statusText: 'Unauthorized' }
+    );
+    const err = await p;
+
+    expect(logoutSpy).not.toHaveBeenCalled();
+    expect(navigateSpy).not.toHaveBeenCalled();
+    expect((err as { status: number }).status).toBe(401);
+  });
+
   // Microtask flusher — `from(promise)` and Promise.then chains in the
   // interceptor mean we need a tick between flushing a response and seeing
   // the next request appear in HttpTestingController.
@@ -88,7 +105,9 @@ describe('authInterceptor', () => {
     await tick();
 
     const retried = httpMock.expectOne(PROTECTED_URL);
-    expect(retried.request.headers.get('X-Auth-Retry')).toBe('1');
+    // The retry marker must not travel as a header: backend CORS rejects unknown headers.
+    expect(retried.request.headers.has('X-Auth-Retry')).toBe(false);
+    expect([...retried.request.headers.keys()].map((k) => k.toLowerCase()).sort()).toEqual(['authorization']);
     retried.flush({ ok: true });
 
     await expect(p).resolves.toEqual({ ok: true });
@@ -116,16 +135,25 @@ describe('authInterceptor', () => {
     await Promise.all([p1, p2, p3]);
   });
 
-  it('retry returning 403 → redirects (no second retry, no loop)', async () => {
-    const p = firstValueFrom(http.get(PROTECTED_URL)).catch(() => null);
+  it('retry returning 403 → keeps the session, shows not-allowed, propagates, no loop', async () => {
+    const p = firstValueFrom(http.get(PROTECTED_URL)).catch((e: unknown) => e);
     httpMock.expectOne(PROTECTED_URL).flush({}, { status: 403, statusText: 'Forbidden' });
     await tick();
     httpMock.expectOne(ME_URL).flush(admin());
     await tick();
+    navigateSpy.mockClear(); // the profile re-sync itself may navigate; only the 403 outcome matters here
     httpMock.expectOne(PROTECTED_URL).flush({}, { status: 403, statusText: 'Forbidden' });
-    await p;
+    const err = await p;
 
-    expect(navigateSpy).toHaveBeenCalled();
+    expect((err as { status: number }).status).toBe(403);
+    expect(snackOpenSpy).toHaveBeenCalledWith(
+      NOT_ALLOWED_MESSAGE,
+      'Cerrar',
+      expect.objectContaining({ panelClass: 'snackbar-error' })
+    );
+    expect(navigateSpy).not.toHaveBeenCalled();
+    expect(logoutSpy).not.toHaveBeenCalled();
+    expect(tokenStorage.getToken()).toBe('tok');
     httpMock.expectNone(PROTECTED_URL);
     httpMock.expectNone(ME_URL);
   });

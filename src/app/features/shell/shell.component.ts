@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
@@ -11,6 +19,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { HasRoleDirective } from '@core/auth/has-role.directive';
 import { RoleLabelPipe } from '@core/auth/role-label.pipe';
 import { AuthService } from '@core/services/auth.service';
+import { EnrollmentAnnouncementService } from '@features/self-enrollment/services/enrollment-announcement.service';
 
 @Component({
   selector: 'app-shell',
@@ -32,12 +41,17 @@ import { AuthService } from '@core/services/auth.service';
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
 })
-export class ShellComponent {
+export class ShellComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly enrollmentAnnouncement = inject(EnrollmentAnnouncementService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly user = this.auth.currentUser;
   readonly sidenavOpen = signal(true);
+  // Cycle open for enrollment as published by the announcement check; drives
+  // the student-only "Preinscripciones" menu link.
+  readonly openCycle = this.enrollmentAnnouncement.openCycle;
 
   readonly initial = computed(() => {
     const u = this.user();
@@ -52,6 +66,12 @@ export class ShellComponent {
     if (u.name) return u.name;
     return u.username;
   });
+
+  // The shell is created once per authenticated entry (login or restored
+  // session), so the announcement check runs once per entry.
+  ngOnInit(): void {
+    this.enrollmentAnnouncement.checkAndAnnounce(this.destroyRef);
+  }
 
   toggleSidenav(): void {
     this.sidenavOpen.update((open) => !open);
