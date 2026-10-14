@@ -38,6 +38,7 @@ import {
   nonBlankValidator,
   toIsoDateString,
 } from '../shared/cycle-form.utils';
+import { showSaveError } from '@core/errors/field-errors';
 
 export { END_BEFORE_START_MESSAGE, endAfterStartValidator, toIsoDateString };
 
@@ -200,12 +201,9 @@ export class CycleNewComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[cycle-new] failed to create cycle', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
-            duration: 3000,
-            panelClass: 'snackbar-error',
-          });
           this.saving.set(false);
           this.form.enable();
+          showSaveError(this.form, err, ERROR_MESSAGE, this.snackBar);
         },
       });
   }

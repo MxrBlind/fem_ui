@@ -55,6 +55,9 @@
               <mat-option [value]="option.value">{{ option.label }}</mat-option>
             }
           </mat-select>
+          @if (form.controls.paymentMode.hasError('server')) {
+            <mat-error>{{ form.controls.paymentMode.getError('server') }}</mat-error>
+          }
         </mat-form-field>
 
         <div class="self-enrollment__actions">

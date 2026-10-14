@@ -31,6 +31,8 @@ import {
   PaymentMode,
   SelfEnrollmentRequest,
 } from '@features/enrollments/models/enrollment.model';
+import { parseApiError } from '@core/errors/api-error';
+import { NOT_ALLOWED_MESSAGE } from '@core/errors/error-messages';
 
 export const LOAD_ERROR_MESSAGE = 'Error al cargar las materias';
 export const SUCCESS_MESSAGE = 'Preinscripción registrada con éxito';
@@ -181,7 +183,7 @@ export class SelfEnrollmentComponent implements OnInit {
     const cycleId = this.cycle()?.id;
     const studentId = this.auth.currentUser()?.id;
     if (cycleId == null || studentId == null) {
-      this.showError();
+      this.showError(ERROR_MESSAGE);
       return;
     }
 
@@ -206,14 +208,14 @@ export class SelfEnrollmentComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[self-enrollment] failed to submit', err);
-          this.showError();
+          this.showError(parseApiError(err).status === 403 ? NOT_ALLOWED_MESSAGE : ERROR_MESSAGE);
           void this.router.navigate([ROLE_HOME_ROUTES.student]);
         },
       });
   }
 
-  private showError(): void {
-    this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
+  private showError(message: string): void {
+    this.snackBar.open(message, 'Cerrar', {
       duration: 3000,
       panelClass: 'snackbar-error',
     });

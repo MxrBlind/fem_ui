@@ -36,6 +36,7 @@ import {
   toBirthDateIso,
 } from '@features/students/shared/student-form.utils';
 import { STUDENT_ROLE_ID } from '@features/students/students.constants';
+import { showSaveError } from '@core/errors/field-errors';
 
 export { toBirthDateIso };
 
@@ -234,12 +235,9 @@ export class StudentNewComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[student-new] failed to create student', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
-            duration: 3000,
-            panelClass: 'snackbar-error',
-          });
           this.saving.set(false);
           this.setFormEnabled(true);
+          showSaveError(this.form, err, ERROR_MESSAGE, this.snackBar);
         },
       });
   }

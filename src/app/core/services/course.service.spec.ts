@@ -79,7 +79,7 @@ describe('CourseService', () => {
       const req = http.expectOne(`${environment.apiBaseUrl}/api/course`);
       expect(req.request.method).toBe('POST');
       expect(req.request.body).toEqual(payload);
-      req.flush(created);
+      req.flush(created, { status: 201, statusText: 'Created' });
       await expect(promise).resolves.toEqual(created);
     });
 

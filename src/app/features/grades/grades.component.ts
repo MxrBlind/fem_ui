@@ -27,6 +27,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs';
 
 import { AuthService } from '@core/services/auth.service';
+import { resolveErrorMessage } from '@core/errors/error-messages';
 import { GradeService } from '@core/services/grade.service';
 import { GradeDto, GradeRow } from './models/grade.model';
 import {
@@ -193,7 +194,7 @@ export class GradesComponent implements OnInit, AfterViewInit {
         },
         error: (err) => {
           console.error('[grades] failed to load', err);
-          this.snackBar.open(LOAD_ERROR_MESSAGE, 'Cerrar', {
+          this.snackBar.open(resolveErrorMessage(err, LOAD_ERROR_MESSAGE), 'Cerrar', {
             duration: 5000,
             panelClass: 'snackbar-error',
           });
@@ -241,7 +242,7 @@ export class GradesComponent implements OnInit, AfterViewInit {
         next: (blob) => this.saveBlob(blob, `certificate_${row.enrollmentId}.pdf`),
         error: (err) => {
           console.error('[grades] failed to download certificate', err);
-          this.snackBar.open(DOWNLOAD_ERROR_MESSAGE, 'Cerrar', {
+          this.snackBar.open(resolveErrorMessage(err, DOWNLOAD_ERROR_MESSAGE), 'Cerrar', {
             duration: 5000,
             panelClass: 'snackbar-error',
           });

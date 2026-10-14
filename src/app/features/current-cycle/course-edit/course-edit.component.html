@@ -85,6 +85,9 @@
       } @else if (form.controls.credits.hasError('pattern')) {
         <mat-error>Los créditos deben ser un número entero.</mat-error>
       }
+      @if (form.controls.credits.hasError('server')) {
+        <mat-error>{{ form.controls.credits.getError('server') }}</mat-error>
+      }
     </mat-form-field>
   </form>
 </mat-dialog-content>

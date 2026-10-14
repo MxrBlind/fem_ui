@@ -21,6 +21,9 @@
       } @else if (form.controls.description.hasError('maxlength')) {
         <mat-error>La descripción no puede exceder 50 caracteres.</mat-error>
       }
+      @if (form.controls.description.hasError('server')) {
+        <mat-error>{{ form.controls.description.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -39,6 +42,9 @@
       <mat-datepicker #startPicker />
       @if (form.controls.startDate.touched && form.controls.startDate.hasError('required')) {
         <mat-error>La fecha de inicio es requerida.</mat-error>
+      }
+      @if (form.controls.startDate.hasError('server')) {
+        <mat-error>{{ form.controls.startDate.getError('server') }}</mat-error>
       }
     </mat-form-field>
 
@@ -62,6 +68,9 @@
         form.controls.endDate.touched && form.hasError('endBeforeStart')
       ) {
         <mat-error>{{ endBeforeStartMessage }}</mat-error>
+      }
+      @if (form.controls.endDate.hasError('server')) {
+        <mat-error>{{ form.controls.endDate.getError('server') }}</mat-error>
       }
     </mat-form-field>
 

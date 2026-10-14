@@ -381,6 +381,34 @@ describe('EnrollmentEditComponent', () => {
       expect(dialogClose).not.toHaveBeenCalled();
       errorSpy.mockRestore();
     });
+
+    it('shows VALIDATION_FAILED fieldErrors inline, without a snackbar, and keeps the form editable', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { fixture, http, snackOpen, dialogClose } = setup(admin);
+      flushLoad(http, fixture);
+
+      fixture.componentInstance.onSubmit();
+      fixture.detectChanges();
+
+      http.expectOne(`${environment.apiBaseUrl}/api/enrollment/9`).flush(
+        {
+          status: 400,
+          error: 'Bad Request',
+          message: 'Validation failed',
+          code: 'VALIDATION_FAILED',
+          fieldErrors: [{ field: 'grade', message: 'Server says no' }],
+        },
+        { status: 400, statusText: 'Bad Request' }
+      );
+      fixture.detectChanges();
+
+      expect(snackOpen).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.form.controls.grade.getError('server')).toBe('Server says no');
+      expect(fixture.nativeElement.textContent).toContain('Server says no');
+      expect(fixture.componentInstance.saving()).toBe(false);
+      expect(dialogClose).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
   });
 
   describe('cancel', () => {
