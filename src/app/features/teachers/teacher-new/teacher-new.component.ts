@@ -27,6 +27,7 @@ import { nonBlankValidator } from '@features/cycles/shared/cycle-form.utils';
 import { CreateTeacherRequest } from '@features/teachers/models/create-teacher.request';
 import { toBirthDateIso } from '@features/teachers/shared/teacher-form.utils';
 import { TEACHER_ROLE_ID } from '@features/teachers/teachers.constants';
+import { showSaveError } from '@core/errors/field-errors';
 
 export { toBirthDateIso };
 
@@ -148,12 +149,9 @@ export class TeacherNewComponent {
         },
         error: (err: unknown) => {
           console.error('[teacher-new] failed to create teacher', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
-            duration: 3000,
-            panelClass: 'snackbar-error',
-          });
           this.saving.set(false);
           this.form.enable();
+          showSaveError(this.form, err, ERROR_MESSAGE, this.snackBar);
         },
       });
   }

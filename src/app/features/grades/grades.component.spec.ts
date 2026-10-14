@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
 import { Subject } from 'rxjs';
 
+import { NOT_ALLOWED_MESSAGE } from '@core/errors/error-messages';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
 import { AuthUser } from '@core/auth/rbac';
@@ -138,6 +139,21 @@ describe('GradesComponent', () => {
         LOAD_ERROR_MESSAGE,
         'Cerrar',
         expect.objectContaining({ duration: 5000, panelClass: 'snackbar-error' })
+      );
+      errorSpy.mockRestore();
+    });
+
+    it('shows the not-allowed message when the grades belong to another student (403)', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { fixture, http, snackOpen } = setup({ skipFlush: true });
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/grade/10`)
+        .flush({ code: 'ACCESS_DENIED' }, { status: 403, statusText: 'Forbidden' });
+      await fixture.whenStable();
+      expect(snackOpen).toHaveBeenCalledWith(
+        NOT_ALLOWED_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ panelClass: 'snackbar-error' })
       );
       errorSpy.mockRestore();
     });

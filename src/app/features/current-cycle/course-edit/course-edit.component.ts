@@ -39,6 +39,7 @@ import {
   CourseDto,
   SubjectDto,
 } from '@features/enrollments/models/enrollment.model';
+import { showSaveError } from '@core/errors/field-errors';
 
 export const SUCCESS_MESSAGE = 'Curso actualizado exitosamente';
 export const ERROR_MESSAGE = 'Error al actualizar este registro';
@@ -266,12 +267,9 @@ export class CourseEditComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[course-edit] failed to update course', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
-            duration: 3000,
-            panelClass: 'snackbar-error',
-          });
           this.saving.set(false);
           this.form.enable();
+          showSaveError(this.form, err, ERROR_MESSAGE, this.snackBar);
         },
       });
   }

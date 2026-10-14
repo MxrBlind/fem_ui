@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -7,6 +8,7 @@ import { Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { ROLE_HOME_ROUTES } from '@core/auth/rbac';
+import { NOT_ALLOWED_MESSAGE } from '@core/errors/error-messages';
 import { AuthService } from '@core/services/auth.service';
 import { CourseService } from '@core/services/course.service';
 import { CycleService } from '@core/services/cycle.service';
@@ -325,6 +327,20 @@ describe('SelfEnrollmentComponent', () => {
       await tick(h, 101);
       submitButton(h.el).click();
       expect(h.snackOpen).toHaveBeenCalledWith(SUCCESS_MESSAGE, 'Cerrar', { duration: 3000 });
+      expect(h.mocks.navigate).toHaveBeenCalledWith([ROLE_HOME_ROUTES.student]);
+    });
+
+    it('shows the not-allowed snackbar and still redirects on 403 without ending the session', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const failure = new HttpErrorResponse({ status: 403, error: { code: 'ACCESS_DENIED' } });
+      const h = setup({ selfEnroll$: throwError(() => failure) });
+      await tick(h, 101);
+      submitButton(h.el).click();
+      expect(h.snackOpen).toHaveBeenCalledWith(
+        NOT_ALLOWED_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ panelClass: 'snackbar-error' })
+      );
       expect(h.mocks.navigate).toHaveBeenCalledWith([ROLE_HOME_ROUTES.student]);
     });
 

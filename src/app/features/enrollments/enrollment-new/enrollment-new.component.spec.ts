@@ -290,6 +290,33 @@ describe('EnrollmentNewComponent', () => {
       errSpy.mockRestore();
     });
 
+    it('shows VALIDATION_FAILED fieldErrors inline, without a snackbar, and keeps the form editable', () => {
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { fixture, http, dialogRef, snackOpen } = setup();
+      selectValid(fixture);
+      fixture.componentInstance.onSubmit();
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/enrollment`)
+        .flush(
+          { status: 400, error: 'Bad Request', message: 'Validation failed', code: 'VALIDATION_FAILED', fieldErrors: [{ field: 'scholarshipPercent', message: 'Server says no' }] },
+          { status: 400, statusText: 'Bad Request' }
+        );
+
+      expect(snackOpen).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.form.controls.scholarshipPercent.getError('server')).toBe('Server says no');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Server says no');
+      expect(dialogRef.close).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.saving()).toBe(false);
+      expect(fixture.componentInstance.form.enabled).toBe(true);
+      expect(fixture.componentInstance.form.controls.studentId.value).toBe(1);
+      expect(errSpy).toHaveBeenCalledWith(
+        '[enrollment-new] failed to create enrollment',
+        expect.anything()
+      );
+      errSpy.mockRestore();
+    });
+
     it('does nothing when the form is invalid', () => {
       const { fixture, http } = setup();
       fixture.componentInstance.onSubmit();

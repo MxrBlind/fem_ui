@@ -429,6 +429,40 @@ describe('StudentNewComponent', () => {
       }
       errSpy.mockRestore();
     });
+
+    it('shows VALIDATION_FAILED fieldErrors inline, without a snackbar, and keeps the form editable', () => {
+      const errSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const { fixture, http, dialogRef, snackOpen } = setup();
+      fillValid(fixture);
+      fixture.componentInstance.onSubmit();
+      http
+        .expectOne(USERS_URL)
+        .flush(
+          { status: 400, error: 'Bad Request', message: 'Validation failed', code: 'VALIDATION_FAILED', fieldErrors: [{ field: 'profile.name', message: 'Server says no' }] },
+          { status: 400, statusText: 'Bad Request' }
+        );
+
+      expect(snackOpen).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.form.controls.name.getError('server')).toBe('Server says no');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Server says no');
+      expect(dialogRef.close).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.saving()).toBe(false);
+      expect(fixture.componentInstance.form.enabled).toBe(true);
+
+      expect(errSpy).toHaveBeenCalledWith(
+        '[student-new] failed to create student',
+        expect.anything()
+      );
+      for (const call of errSpy.mock.calls) {
+        for (const arg of call) {
+          expect(JSON.stringify(arg)).not.toContain('secret12');
+        }
+      }
+      errSpy.mockRestore();
+    });
   });
 
   describe('cancel', () => {

@@ -16,6 +16,9 @@
       } @else if (form.controls.username.hasError('maxlength')) {
         <mat-error>El username no puede exceder 20 caracteres.</mat-error>
       }
+      @if (form.controls.username.hasError('server')) {
+        <mat-error>{{ form.controls.username.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -32,6 +35,9 @@
       } @else if (form.controls.password.hasError('minlength')) {
         <mat-error>El password debe tener al menos 8 caracteres.</mat-error>
       }
+      @if (form.controls.password.hasError('server')) {
+        <mat-error>{{ form.controls.password.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -39,6 +45,9 @@
       <input matInput type="text" formControlName="name" autocomplete="off" />
       @if (form.controls.name.touched && form.controls.name.hasError('required')) {
         <mat-error>El nombre es requerido.</mat-error>
+      }
+      @if (form.controls.name.hasError('server')) {
+        <mat-error>{{ form.controls.name.getError('server') }}</mat-error>
       }
     </mat-form-field>
 
@@ -53,6 +62,9 @@
       @if (form.controls.parentLastName.touched && form.controls.parentLastName.hasError('required')) {
         <mat-error>El apellido paterno es requerido.</mat-error>
       }
+      @if (form.controls.parentLastName.hasError('server')) {
+        <mat-error>{{ form.controls.parentLastName.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -65,6 +77,9 @@
       />
       @if (form.controls.motherLastName.touched && form.controls.motherLastName.hasError('required')) {
         <mat-error>El apellido materno es requerido.</mat-error>
+      }
+      @if (form.controls.motherLastName.hasError('server')) {
+        <mat-error>{{ form.controls.motherLastName.getError('server') }}</mat-error>
       }
     </mat-form-field>
 
@@ -85,6 +100,9 @@
       @if (form.controls.birthDate.touched && form.controls.birthDate.hasError('required')) {
         <mat-error>La fecha de nacimiento es requerida.</mat-error>
       }
+      @if (form.controls.birthDate.hasError('server')) {
+        <mat-error>{{ form.controls.birthDate.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -93,6 +111,9 @@
       @if (form.controls.address.touched && form.controls.address.hasError('required')) {
         <mat-error>La dirección es requerida.</mat-error>
       }
+      @if (form.controls.address.hasError('server')) {
+        <mat-error>{{ form.controls.address.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -100,6 +121,9 @@
       <input matInput type="text" formControlName="church" autocomplete="off" />
       @if (form.controls.church.touched && form.controls.church.hasError('required')) {
         <mat-error>La iglesia es requerida.</mat-error>
+      }
+      @if (form.controls.church.hasError('server')) {
+        <mat-error>{{ form.controls.church.getError('server') }}</mat-error>
       }
     </mat-form-field>
 
@@ -111,6 +135,9 @@
       } @else if (form.controls.email.touched && form.controls.email.hasError('email')) {
         <mat-error>El email no tiene un formato válido.</mat-error>
       }
+      @if (form.controls.email.hasError('server')) {
+        <mat-error>{{ form.controls.email.getError('server') }}</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -118,6 +145,9 @@
       <input matInput type="text" formControlName="phone" autocomplete="off" />
       @if (form.controls.phone.touched && form.controls.phone.hasError('required')) {
         <mat-error>El teléfono es requerido.</mat-error>
+      }
+      @if (form.controls.phone.hasError('server')) {
+        <mat-error>{{ form.controls.phone.getError('server') }}</mat-error>
       }
     </mat-form-field>
   </form>

@@ -127,19 +127,18 @@ describe('LoginComponent', () => {
     expect(getInput('password').value).toBe('');
   });
 
-  it('on 403 treats as wrong credentials (Spring Security default)', async () => {
+  it('on 403 is NOT wrong credentials: shows the generic snackbar and keeps the password', async () => {
     authSpy.login.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403, statusText: 'Forbidden' })));
     setValue('username', 'alice');
     setValue('password', 'pass1');
     (fixture.componentInstance as unknown as { onSubmit(): void }).onSubmit();
     await fixture.whenStable();
     expect(snackBarOpen).toHaveBeenCalledWith(
-      'Usuario o contraseña incorrectos.',
+      'No fue posible iniciar sesión. Inténtalo de nuevo.',
       undefined,
       expect.objectContaining({ panelClass: 'snackbar-error' })
     );
-    expect(getInput('username').value).toBe('alice');
-    expect(getInput('password').value).toBe('');
+    expect(snackBarOpen).not.toHaveBeenCalledWith('Usuario o contraseña incorrectos.', expect.anything(), expect.anything());
   });
 
   it('on non-credential error shows generic Spanish snackbar', async () => {

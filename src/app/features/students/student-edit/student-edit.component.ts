@@ -46,6 +46,7 @@ import {
   optionalLengthValidator,
   toBirthDateIso,
 } from '@features/teachers/shared/teacher-form.utils';
+import { showSaveError } from '@core/errors/field-errors';
 
 export const SUCCESS_MESSAGE = 'Registro actualizado exitosamente';
 export const ERROR_MESSAGE = 'Error al actualizar este registro';
@@ -258,12 +259,9 @@ export class StudentEditComponent implements OnInit {
         },
         error: (err: unknown) => {
           console.error('[student-edit] failed to update student', err);
-          this.snackBar.open(ERROR_MESSAGE, 'Cerrar', {
-            duration: 3000,
-            panelClass: 'snackbar-error',
-          });
           this.saving.set(false);
           this.setFormEnabled(true);
+          showSaveError(this.form, err, ERROR_MESSAGE, this.snackBar);
         },
       });
   }

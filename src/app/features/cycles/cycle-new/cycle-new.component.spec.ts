@@ -277,8 +277,11 @@ describe('CycleNewComponent', () => {
         description: 'Ciclo 2027-A',
         startDate: '2027-01-15',
         endDate: '2027-06-15',
+        current: false, // sent explicitly: the backend would default a new cycle to current (FEM-32)
         principal: { id: 1 },
       });
+      expect(req.request.body.id).toBeUndefined();
+      expect(req.request.body.active).toBeUndefined();
 
       const created: CycleDto = {
         id: 99,
@@ -315,6 +318,35 @@ describe('CycleNewComponent', () => {
           panelClass: 'snackbar-error',
         })
       );
+      expect(dialogRef.close).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.saving()).toBe(false);
+      expect(fixture.componentInstance.form.enabled).toBe(true);
+      expect(fixture.componentInstance.form.controls.description.value).toBe(
+        'Ciclo 2027-A'
+      );
+      expect(errSpy).toHaveBeenCalledWith(
+        '[cycle-new] failed to create cycle',
+        expect.anything()
+      );
+      errSpy.mockRestore();
+    });
+
+    it('shows VALIDATION_FAILED fieldErrors inline, without a snackbar, and keeps the form editable', () => {
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const { fixture, http, dialogRef, snackOpen } = setup();
+      fillValid(fixture);
+      fixture.componentInstance.onSubmit();
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/cycle`)
+        .flush(
+          { status: 400, error: 'Bad Request', message: 'Validation failed', code: 'VALIDATION_FAILED', fieldErrors: [{ field: 'description', message: 'Server says no' }] },
+          { status: 400, statusText: 'Bad Request' }
+        );
+
+      expect(snackOpen).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.form.controls.description.getError('server')).toBe('Server says no');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Server says no');
       expect(dialogRef.close).not.toHaveBeenCalled();
       expect(fixture.componentInstance.saving()).toBe(false);
       expect(fixture.componentInstance.form.enabled).toBe(true);

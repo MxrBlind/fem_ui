@@ -10,6 +10,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { environment } from '../../../../environments/environment';
+import { NOT_ALLOWED_MESSAGE } from '@core/errors/error-messages';
 import {
   CategoryDto,
   LevelDto,
@@ -240,6 +241,61 @@ describe('SubjectNewComponent', () => {
         expect.anything()
       );
       errSpy.mockRestore();
+    });
+
+    it('shows VALIDATION_FAILED fieldErrors inline, without a snackbar, and keeps the form editable', () => {
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { fixture, http, dialogRef, snackOpen } = setup();
+      selectValid(fixture);
+      fixture.componentInstance.onSubmit();
+      http.expectOne(`${environment.apiBaseUrl}/api/subject`).flush(
+        {
+          status: 400,
+          error: 'Bad Request',
+          message: 'Validation failed',
+          code: 'VALIDATION_FAILED',
+          fieldErrors: [{ field: 'code', message: 'Code is too long' }],
+        },
+        { status: 400, statusText: 'Bad Request' }
+      );
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.form.controls.code.getError('server')).toBe('Code is too long');
+      expect(fixture.nativeElement.querySelector('mat-error')?.textContent).toContain('Code is too long');
+      expect(snackOpen).not.toHaveBeenCalled();
+      expect(dialogRef.close).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.form.enabled).toBe(true);
+      errSpy.mockRestore();
+    });
+
+    it('shows the not-allowed snackbar on 403', () => {
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { fixture, http, snackOpen } = setup();
+      selectValid(fixture);
+      fixture.componentInstance.onSubmit();
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/subject`)
+        .flush({ status: 403, error: 'Forbidden', path: '/api/subject' }, { status: 403, statusText: 'Forbidden' });
+
+      expect(snackOpen).toHaveBeenCalledWith(
+        NOT_ALLOWED_MESSAGE,
+        'Cerrar',
+        expect.objectContaining({ panelClass: 'snackbar-error' })
+      );
+      errSpy.mockRestore();
+    });
+
+    it('treats 201 Created as success', () => {
+      const { fixture, http, dialogRef, snackOpen } = setup();
+      selectValid(fixture);
+      fixture.componentInstance.onSubmit();
+      const created = { id: 7, code: 'MAT-101', description: 'x', category: makeCategory(3), level: makeLevel(1) };
+      http
+        .expectOne(`${environment.apiBaseUrl}/api/subject`)
+        .flush(created, { status: 201, statusText: 'Created' });
+
+      expect(snackOpen).toHaveBeenCalledWith(SUCCESS_MESSAGE, 'Cerrar', expect.anything());
+      expect(dialogRef.close).toHaveBeenCalledWith(created);
     });
   });
 

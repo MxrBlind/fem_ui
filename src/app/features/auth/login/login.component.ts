@@ -68,7 +68,7 @@ export class LoginComponent {
           this.snackBar.open('Sesión iniciada', undefined, { duration: 2000 });
         },
         error: (err: HttpErrorResponse) => {
-          if (err.status === 401 || err.status === 403) {
+          if (err.status === 401) {
             this.snackBar.open('Usuario o contraseña incorrectos.', undefined, {
               duration: 5000,
               panelClass: 'snackbar-error'
