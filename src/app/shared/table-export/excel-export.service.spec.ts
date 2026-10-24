@@ -71,6 +71,53 @@ describe('ExcelExportService', () => {
     ).resolves.toBeUndefined();
   });
 
+  describe('header autofilter', () => {
+    function configWithColumns(count: number): ExcelExportConfig<Row> {
+      return {
+        rows: [{ id: 1, name: 'Ada' }],
+        columns: Array.from({ length: count }, (_, i) => ({
+          header: `Col ${i + 1}`,
+          key: `col${i + 1}`,
+          value: (r: Row) => `${r.name} ${i + 1}`,
+        })),
+        entitySlug: 'wide',
+      };
+    }
+
+    // jsdom Blobs cannot be read by Node's Response, so use jsdom's FileReader
+    function readBlob(blob: Blob): Promise<ArrayBuffer> {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as ArrayBuffer);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(blob);
+      });
+    }
+
+    async function exportedAutoFilter(): Promise<unknown> {
+      const blob = vi.mocked(URL.createObjectURL).mock.lastCall?.[0] as Blob;
+      const excel = await import('exceljs');
+      const workbook = new excel.Workbook();
+      await workbook.xlsx.load(await readBlob(blob));
+      return workbook.worksheets[0].autoFilter;
+    }
+
+    it.each([
+      [2, 'A1:B1'],
+      [26, 'A1:Z1'],
+      [27, 'A1:AA1'],
+      [30, 'A1:AD1'],
+    ])('covers all %i header columns (%s)', async (count, expectedRange) => {
+      await service.exportToExcel(configWithColumns(count));
+      expect(await exportedAutoFilter()).toBe(expectedRange);
+    });
+
+    it('sets no autofilter when there are no columns', async () => {
+      await expect(service.exportToExcel(configWithColumns(0))).resolves.toBeUndefined();
+      expect(await exportedAutoFilter()).toBeUndefined();
+    });
+  });
+
   it('caches the dynamically imported exceljs module across calls', async () => {
     await service.exportToExcel(baseConfig());
     const cached = (service as unknown as { modulePromise: Promise<unknown> }).modulePromise;
