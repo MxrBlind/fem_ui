@@ -5,9 +5,19 @@ export const NOT_FOUND_MESSAGE = 'No se encontró el registro.';
 export const CURRENT_CONFLICT_MESSAGE = 'Ya existe un ciclo activo, no es posible activar más';
 export const OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE = 'Ya existe un ciclo abierto a inscripciones';
 
+export const REPORT_UNSAFE_QUERY_MESSAGE =
+  'No se pudo interpretar tu solicitud. Intenta describirla de otra forma.';
+export const REPORT_EXECUTION_FAILED_MESSAGE =
+  'No se pudo ejecutar el reporte. Intenta con una solicitud más específica.';
+export const REPORT_GENERATION_FAILED_MESSAGE =
+  'No se pudo generar el reporte. Inténtalo de nuevo más tarde.';
+
 const CODE_MESSAGES: ReadonlyMap<string, string> = new Map([
   ['ACCESS_DENIED', NOT_ALLOWED_MESSAGE],
-  ['ENTITY_NOT_FOUND', NOT_FOUND_MESSAGE]
+  ['ENTITY_NOT_FOUND', NOT_FOUND_MESSAGE],
+  ['UNSAFE_QUERY', REPORT_UNSAFE_QUERY_MESSAGE],
+  ['REPORT_EXECUTION_FAILED', REPORT_EXECUTION_FAILED_MESSAGE],
+  ['REPORT_GENERATION_FAILED', REPORT_GENERATION_FAILED_MESSAGE]
 ]);
 
 /** Conflict codes only count on a 409, as the backend never sends them elsewhere. */

@@ -287,6 +287,28 @@ describe('ShellComponent', () => {
     });
   });
 
+  describe('"Reportes" section', () => {
+    it('shows the "Reportes" header and a "Generador" link to /reportes for admin', () => {
+      const fixture = setup(admin);
+      const links = Array.from(qAll(fixture, 'a[mat-list-item]')) as HTMLAnchorElement[];
+      const generador = links.find((el) => (el.textContent ?? '').trim() === 'Generador');
+      expect(textVisible(fixture, 'Reportes')).toBe(true);
+      expect(generador).toBeTruthy();
+      expect(generador!.getAttribute('href')).toBe('/reportes');
+      expect(links.some((el) => (el.textContent ?? '').trim() === 'Reportes')).toBe(false);
+    });
+
+    it.each([
+      ['teacher', teacher],
+      ['student', student],
+    ])('is absent for %s', (_label, user) => {
+      const fixture = setup(user);
+      const links = Array.from(qAll(fixture, 'a[mat-list-item]')) as HTMLAnchorElement[];
+      expect(links.some((el) => (el.textContent ?? '').trim() === 'Generador')).toBe(false);
+      expect(textVisible(fixture, 'Reportes')).toBe(false);
+    });
+  });
+
   describe('Sidebar profile area (FEM-54)', () => {
     it('renders avatar initial from profile.name', () => {
       const fixture = setup(admin);
