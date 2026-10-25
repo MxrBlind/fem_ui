@@ -37,7 +37,11 @@
 
         <span class="report-result__count mat-body-medium" data-testid="report-row-count">{{ rowCountLabel() }}</span>
 
-        <app-export-to-excel-button data-testid="report-export-btn" [configFactory]="excelConfig" />
+        <app-export-to-excel-button
+          data-testid="report-export-btn"
+          [configFactory]="excelConfig"
+          [disabled]="filteredCount() === 0"
+        />
       </div>
 
       <div class="report-result__table-wrapper">

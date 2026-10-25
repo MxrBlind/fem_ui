@@ -78,7 +78,13 @@ export class ExcelExportService {
   ): void {
     for (const row of rows) {
       const values = columns.map((c) => this.sanitize(c.value(row)));
-      sheet.addRow(values);
+      const sheetRow = sheet.addRow(values);
+      columns.forEach((column, index) => {
+        const value = values[index];
+        if (column.numFmt && (value instanceof Date || typeof value === 'number')) {
+          sheetRow.getCell(index + 1).numFmt = column.numFmt;
+        }
+      });
     }
   }
 
