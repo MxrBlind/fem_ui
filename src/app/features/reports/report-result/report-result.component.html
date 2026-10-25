@@ -1,0 +1,72 @@
+<section class="report-result">
+  <p class="report-result__interpretation mat-body-large" data-testid="report-interpretation">
+    Se interpretó como: {{ result().interpretation }}
+  </p>
+
+  <mat-card class="report-result__card">
+    @if (isEmpty()) {
+      <div class="report-result__empty" data-testid="report-empty">
+        <mat-icon>inbox</mat-icon>
+        <p class="mat-body-large">{{ emptyMessage }}</p>
+      </div>
+    } @else {
+      <div class="report-result__toolbar">
+        <mat-form-field appearance="outline" class="report-result__filter">
+          <mat-label>Filtrar</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+            matInput
+            type="text"
+            autocomplete="off"
+            data-testid="report-filter"
+            [value]="filterText()"
+            (input)="onFilterInput(($any($event.target)).value)"
+          />
+          @if (filterText().length > 0) {
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              aria-label="Limpiar filtro"
+              (click)="clearFilter()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+
+        <span class="report-result__count mat-body-medium" data-testid="report-row-count">{{ rowCountLabel() }}</span>
+
+        <app-export-to-excel-button data-testid="report-export-btn" [configFactory]="excelConfig" />
+      </div>
+
+      <div class="report-result__table-wrapper">
+        <table
+          mat-table
+          matSort
+          [dataSource]="dataSource"
+          class="report-result__table"
+          aria-label="Resultado del reporte"
+          data-testid="report-table"
+        >
+          @for (column of columnDefs(); track column.id) {
+            <ng-container [matColumnDef]="column.id">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ column.header }}</th>
+              <td mat-cell *matCellDef="let row">{{ row.display[column.index] }}</td>
+            </ng-container>
+          }
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns()" data-testid="report-row"></tr>
+        </table>
+      </div>
+
+      <mat-paginator
+        [pageSizeOptions]="pageSizeOptions"
+        [pageSize]="25"
+        showFirstLastButtons
+        aria-label="Paginación del reporte"
+      />
+    }
+  </mat-card>
+</section>

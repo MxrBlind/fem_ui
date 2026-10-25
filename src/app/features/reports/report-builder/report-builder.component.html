@@ -1,0 +1,43 @@
+<section class="report-builder">
+  <h2 class="report-builder__title mat-headline-small" data-testid="reports-title">{{ title }}</h2>
+
+  <mat-card class="report-builder__card">
+    <form class="report-builder__form" [formGroup]="form" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="outline" class="report-builder__field">
+        <mat-label>Quiero un reporte que contenga…</mat-label>
+        <textarea
+          matInput
+          rows="1"
+          formControlName="prompt"
+          [attr.maxlength]="maxLength"
+          data-testid="report-prompt"
+        ></textarea>
+        <mat-hint align="end" data-testid="report-prompt-counter">{{ promptLength() }} / {{ maxLength }}</mat-hint>
+        @if (form.controls.prompt.hasError('required') || form.controls.prompt.hasError('blank')) {
+          <mat-error>Describe el reporte que necesitas.</mat-error>
+        } @else if (form.controls.prompt.hasError('maxlength')) {
+          <mat-error>La solicitud no puede exceder {{ maxLength }} caracteres.</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="report-builder__actions">
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          data-testid="report-generate-btn"
+          [disabled]="form.invalid || loading()"
+        >
+          @if (loading()) {
+            <mat-progress-spinner mode="indeterminate" diameter="18" />
+          }
+          {{ loading() ? 'Generando…' : 'Generar' }}
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  @if (result(); as report) {
+    <app-report-result class="report-builder__result" [result]="report" />
+  }
+</section>

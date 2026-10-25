@@ -5,6 +5,9 @@ import {
   NOT_ALLOWED_MESSAGE,
   NOT_FOUND_MESSAGE,
   OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE,
+  REPORT_EXECUTION_FAILED_MESSAGE,
+  REPORT_GENERATION_FAILED_MESSAGE,
+  REPORT_UNSAFE_QUERY_MESSAGE,
   resolveErrorMessage
 } from './error-messages';
 
@@ -32,6 +35,21 @@ describe('resolveErrorMessage', () => {
     expect(
       resolveErrorMessage(httpError(409, { code: 'CYCLE_OPEN_FOR_ENROLLMENT_CONFLICT' }), FALLBACK)
     ).toBe(OPEN_FOR_ENROLLMENT_CONFLICT_MESSAGE);
+  });
+
+  it('maps the report error codes to their Spanish messages, never to the server message', () => {
+    expect(
+      resolveErrorMessage(httpError(400, { code: 'UNSAFE_QUERY', message: 'The query is not allowed.' }), FALLBACK)
+    ).toBe(REPORT_UNSAFE_QUERY_MESSAGE);
+    expect(
+      resolveErrorMessage(
+        httpError(422, { code: 'REPORT_EXECUTION_FAILED', message: 'The report query could not be executed.' }),
+        FALLBACK
+      )
+    ).toBe(REPORT_EXECUTION_FAILED_MESSAGE);
+    expect(
+      resolveErrorMessage(httpError(502, { code: 'REPORT_GENERATION_FAILED', message: 'x' }), FALLBACK)
+    ).toBe(REPORT_GENERATION_FAILED_MESSAGE);
   });
 
   it('never exposes the server message on 5xx', () => {

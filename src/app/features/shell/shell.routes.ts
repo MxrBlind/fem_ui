@@ -75,6 +75,15 @@ export const SHELL_ROUTES: Routes = [
       ),
   },
   {
+    path: 'reportes',
+    canMatch: [roleGuard],
+    data: { roles: ['admin'] },
+    loadComponent: () =>
+      import('../reports/report-builder/report-builder.component').then(
+        (m) => m.ReportBuilderComponent
+      ),
+  },
+  {
     path: 'mi-perfil',
     loadComponent: () =>
       import('../profile/profile-edit/profile-edit.component').then(

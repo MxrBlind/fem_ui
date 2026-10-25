@@ -1,0 +1,57 @@
+:host {
+  display: block;
+  color: var(--mat-sys-on-surface);
+}
+
+.report-result__interpretation {
+  margin: 0 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.report-result__card {
+  display: block;
+  background: var(--mat-sys-surface-container);
+}
+
+.report-result__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+  // The toolbar sits directly in the padding-less mat-card, so keep its last item off the card border.
+  padding-right: 16px;
+}
+
+.report-result__filter {
+  flex: 1 1 280px;
+}
+
+.report-result__count {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.report-result__table-wrapper {
+  display: block;
+  overflow-x: auto;
+}
+
+.report-result__table {
+  width: 100%;
+}
+
+.report-result__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+}
