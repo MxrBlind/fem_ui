@@ -302,39 +302,140 @@ describe('ReportResultComponent', () => {
   });
 
   describe('Excel export', () => {
-    it('exports the filtered rows with the column labels as headers and the displayed values', () => {
-      const fixture = setup(
-        makeResult(
-          [
-            { name: 'name', label: 'Nombre', type: 'VARCHAR' },
-            { name: 'start_date', label: 'Inicio', type: 'DATE' }
-          ],
-          [
-            ['Ana', '2024-01-05'],
-            ['Beto', null],
-            ['Alan', '2024-02-01']
-          ]
-        )
+    const typedResult = (): ReportResult =>
+      makeResult(
+        [
+          { name: 'name', label: 'Nombre', type: 'VARCHAR' },
+          { name: 'start_date', label: 'Inicio', type: 'DATE' },
+          { name: 'grant', label: 'Beca', type: 'INT' },
+          { name: 'active', label: 'Activo', type: 'BIT' }
+        ],
+        [
+          ['Ana', '2024-01-05', 50, true],
+          ['Beto', null, null, false],
+          ['Alan', '2024-02-01', '1250', 0]
+        ]
       );
+
+    it('exports the filtered rows with the column labels as headers and typed cells', () => {
+      const fixture = setup(typedResult());
       typeFilter(fixture, 'a');
 
       const config = fixture.componentInstance.excelConfig();
 
       expect(config.entitySlug).toBe('reporte');
-      expect(config.columns.map((c) => c.header)).toEqual(['Nombre', 'Inicio']);
+      expect(config.sheetName).toBe('Reporte');
+      expect(config.filteredBy).toBe('a');
+      expect(config.columns.map((c) => c.header)).toEqual(['Nombre', 'Inicio', 'Beca', 'Activo']);
       expect(config.rows).toHaveLength(2);
       expect(config.rows.map((row) => config.columns.map((c) => c.value(row)))).toEqual([
-        ['Ana', '05/01/2024'],
-        ['Alan', '01/02/2024']
+        ['Ana', new Date(Date.UTC(2024, 0, 5)), 50, 'Sí'],
+        ['Alan', new Date(Date.UTC(2024, 1, 1)), 1250, 'No']
       ]);
     });
 
-    it('exports empty cells as empty strings', () => {
-      const fixture = setup(makeResult(textColumns(1), [[null]]));
+    it('exports empty cells as null', () => {
+      const fixture = setup(typedResult());
+
+      const config = fixture.componentInstance.excelConfig();
+      const beto = config.rows.find((row) => config.columns[0].value(row) === 'Beto')!;
+
+      expect(config.columns.map((c) => c.value(beto))).toEqual(['Beto', null, null, 'No']);
+    });
+
+    it('exports every column even when names and labels repeat', () => {
+      const fixture = setup(
+        makeResult(
+          [
+            { name: 'x', label: 'Valor', type: 'INT' },
+            { name: 'x', label: 'Valor', type: 'VARCHAR' }
+          ],
+          [[7, 'siete']]
+        )
+      );
 
       const config = fixture.componentInstance.excelConfig();
 
-      expect(config.columns[0].value(config.rows[0])).toBe('');
+      expect(config.columns.map((c) => c.header)).toEqual(['Valor', 'Valor']);
+      expect(config.columns.map((c) => c.value(config.rows[0]))).toEqual([7, 'siete']);
+    });
+
+    it('declares a number format for date and datetime columns only', () => {
+      const fixture = setup(
+        makeResult(
+          [
+            { name: 'a', label: 'Fecha', type: 'DATE' },
+            { name: 'b', label: 'Fecha y hora', type: 'DATETIME' },
+            { name: 'c', label: 'Marca', type: 'TIMESTAMP' },
+            { name: 'd', label: 'Número', type: 'BIGINT' },
+            { name: 'e', label: 'Texto', type: 'VARCHAR' },
+            { name: 'f', label: 'Activo', type: 'BIT' }
+          ],
+          [['2024-01-05', '2024-01-05T14:30:00', '2024-01-05 08:05:00', 1, 'x', true]]
+        )
+      );
+
+      const config = fixture.componentInstance.excelConfig();
+
+      expect(config.columns.map((c) => c.numFmt)).toEqual([
+        'dd/mm/yyyy',
+        'dd/mm/yyyy hh:mm',
+        'dd/mm/yyyy hh:mm',
+        undefined,
+        undefined,
+        undefined
+      ]);
+    });
+
+    it('computes the typed cells once per result, not on every export', () => {
+      const fixture = setup(typedResult());
+      const first = fixture.componentInstance.excelConfig();
+      const firstDate = first.columns[1].value(first.rows[0]);
+
+      typeFilter(fixture, 'an');
+      typeFilter(fixture, '');
+      const second = fixture.componentInstance.excelConfig();
+      const secondDate = second.columns[1].value(second.rows[0]);
+
+      expect(secondDate).toBeInstanceOf(Date);
+      expect(secondDate).toBe(firstDate);
+    });
+
+    it('exports a value that does not fit its column type as text without failing', () => {
+      const fixture = setup(
+        makeResult(
+          [
+            { name: 'd', label: 'Fecha', type: 'DATE' },
+            { name: 'n', label: 'Número', type: 'BIGINT' }
+          ],
+          [['not a date', '9007199254740993']]
+        )
+      );
+
+      const config = fixture.componentInstance.excelConfig();
+
+      expect(config.columns.map((c) => c.value(config.rows[0]))).toEqual(['not a date', '9007199254740993']);
+    });
+
+    describe('export button state', () => {
+      const exportButton = (fixture: ComponentFixture<ReportResultComponent>): HTMLButtonElement =>
+        el(fixture).querySelector('[data-testid="export-to-excel-btn"]') as HTMLButtonElement;
+
+      it('is enabled when there are rows to export', () => {
+        const fixture = setup(typedResult());
+
+        expect(exportButton(fixture).disabled).toBe(false);
+      });
+
+      it('is disabled while the filter matches no rows and enabled again after clearing it', () => {
+        const fixture = setup(typedResult());
+
+        typeFilter(fixture, 'zzz-no-match');
+        expect(exportButton(fixture).disabled).toBe(true);
+
+        typeFilter(fixture, '');
+        expect(exportButton(fixture).disabled).toBe(false);
+      });
     });
 
     it('keeps the toolbar, and so the export button, 16px away from the card right edge', () => {

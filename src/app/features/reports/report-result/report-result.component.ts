@@ -22,16 +22,28 @@ import {
   ExportToExcelButtonComponent,
 } from '@shared/table-export';
 import { ReportResult } from '../models/report.model';
-import { formatReportCell, resolveCellKind, toSortValue } from './report-cell-format';
+import {
+  ExcelCell,
+  ReportCellKind,
+  formatReportCell,
+  resolveCellKind,
+  toCell,
+  toSortValue
+} from './report-cell-format';
 
 export const EMPTY_RESULT_MESSAGE = 'El reporte no devolvió resultados.';
 
+/** Spreadsheet number formats of the date columns; other kinds keep the default format. */
+export const EXCEL_DATE_FORMAT = 'dd/mm/yyyy';
+export const EXCEL_DATETIME_FORMAT = 'dd/mm/yyyy hh:mm';
+
 type SortValue = number | string | null;
 
-/** One report row with its cells already formatted for display, sorting and filtering. */
+/** One report row with its cells already formatted for display, sorting, filtering and Excel export. */
 export interface ReportDisplayRow {
   display: string[];
   sort: SortValue[];
+  cells: ExcelCell[];
   haystack: string;
 }
 
@@ -39,6 +51,13 @@ interface ReportColumnDef {
   id: string;
   index: number;
   header: string;
+  numFmt: string | undefined;
+}
+
+function excelNumberFormat(kind: ReportCellKind): string | undefined {
+  if (kind === 'date') return EXCEL_DATE_FORMAT;
+  if (kind === 'datetime') return EXCEL_DATETIME_FORMAT;
+  return undefined;
 }
 
 @Component({
@@ -77,6 +96,7 @@ export class ReportResultComponent {
       id: `c${index}`,
       index,
       header: column.label.trim() || column.name,
+      numFmt: excelNumberFormat(resolveCellKind(column.type)),
     }))
   );
   readonly displayedColumns = computed(() => this.columnDefs().map((column) => column.id));
@@ -89,6 +109,7 @@ export class ReportResultComponent {
       return {
         display,
         sort: kinds.map((kind, index) => toSortValue(row[index], kind)),
+        cells: kinds.map((kind, index) => toCell(row[index], kind)),
         haystack: display.join(' ').toLowerCase(),
       };
     });
@@ -98,12 +119,18 @@ export class ReportResultComponent {
 
   private readonly normalizedFilter = computed(() => this.filterText().trim().toLowerCase());
 
+  /** Rows matching the current filter; drives the row count label and the export button state. */
+  readonly filteredCount = computed(() => {
+    const term = this.normalizedFilter();
+    const rows = this.displayRows();
+    return term ? rows.filter((row) => row.haystack.includes(term)).length : rows.length;
+  });
+
   readonly rowCountLabel = computed(() => {
     const total = this.displayRows().length;
-    const term = this.normalizedFilter();
-    const shown = term ? this.displayRows().filter((row) => row.haystack.includes(term)).length : total;
+    const shown = this.filteredCount();
     const noun = total === 1 ? 'fila' : 'filas';
-    return term ? `${shown} de ${total} ${noun}` : `${total} ${noun}`;
+    return this.normalizedFilter() ? `${shown} de ${total} ${noun}` : `${total} ${noun}`;
   });
 
   readonly dataSource = new MatTableDataSource<ReportDisplayRow>([]);
@@ -115,7 +142,8 @@ export class ReportResultComponent {
     this.columnDefs().map((column) => ({
       header: column.header,
       key: column.id,
-      value: (row) => (row.sort[column.index] === null ? '' : row.display[column.index]),
+      value: (row) => row.cells[column.index],
+      numFmt: column.numFmt,
     }))
   );
 

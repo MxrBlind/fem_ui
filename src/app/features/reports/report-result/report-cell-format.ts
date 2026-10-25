@@ -2,6 +2,12 @@ import { ReportCellValue } from '../models/report.model';
 
 export type ReportCellKind = 'text' | 'number' | 'boolean' | 'date' | 'datetime';
 
+/** A cell as written to the spreadsheet: `Date` and `number` become real Excel values, `null` an empty cell. */
+export type ExcelCell = string | number | Date | null;
+
+/** Most significant decimal digits a double represents exactly. */
+const MAX_EXACT_DIGITS = 15;
+
 /** Value shown for an empty cell, matching the placeholder used by the list pages. */
 export const EMPTY_CELL = '—';
 
@@ -86,6 +92,51 @@ export function toSortValue(value: ReportCellValue | undefined, kind: ReportCell
     default:
       return String(value).toLowerCase();
   }
+}
+
+/**
+ * Returns the value to write in an Excel cell, typed by column kind: a `Date` for date columns,
+ * a `number` for numeric columns, `Sí`/`No` for booleans and `null` for empty cells.
+ * Values that do not fit their kind, or numbers that a double cannot hold exactly, stay as text.
+ * Never throws. The formula guard is applied later by the export service.
+ *
+ * Dates are written as UTC values built from the local calendar parts, because ExcelJS serializes
+ * `Date` using its UTC fields: this keeps the day and time identical to the table in any timezone.
+ */
+export function toCell(value: ReportCellValue | undefined, kind: ReportCellKind): ExcelCell {
+  if (isEmpty(value)) return null;
+
+  switch (kind) {
+    case 'date': {
+      const date = parseDate(value, false);
+      return date ? new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())) : String(value);
+    }
+    case 'datetime': {
+      const date = parseDate(value, true);
+      return date
+        ? new Date(
+            Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes())
+          )
+        : String(value);
+    }
+    case 'boolean': {
+      const flag = parseBoolean(value);
+      return flag === null ? String(value) : flag ? 'Sí' : 'No';
+    }
+    case 'number':
+      return toExactNumber(value);
+    default:
+      return String(value);
+  }
+}
+
+/** Converts to a number only when a double holds the value exactly; otherwise keeps the text. */
+function toExactNumber(value: ReportCellValue): number | string {
+  const numeric = parseNumber(value);
+  if (numeric === null || typeof value !== 'string') return numeric ?? String(value);
+
+  const significantDigits = value.trim().replace(/^[+-]/, '').replace('.', '').replace(/^0+/, '').length;
+  return significantDigits > MAX_EXACT_DIGITS ? value : numeric;
 }
 
 function isEmpty(value: ReportCellValue | undefined): value is null | undefined | '' {

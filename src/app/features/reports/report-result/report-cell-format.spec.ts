@@ -2,6 +2,7 @@ import {
   EMPTY_CELL,
   formatReportCell,
   resolveCellKind,
+  toCell,
   toSortValue
 } from './report-cell-format';
 
@@ -133,5 +134,146 @@ describe('toSortValue', () => {
   it('returns lower-cased text for text columns and the raw text for unparsable values', () => {
     expect(toSortValue('Ana', 'text')).toBe('ana');
     expect(toSortValue('abc', 'number')).toBe('abc');
+  });
+});
+
+describe('toCell', () => {
+  /** Runs `body` with the process timezone set to `timeZone`, restoring the previous one afterwards. */
+  function withTimeZone(timeZone: string, body: () => void): void {
+    // The spec tsconfig has no Node types, so reach the process environment through globalThis.
+    const env = (globalThis as unknown as { process: { env: Record<string, string | undefined> } }).process.env;
+    const previous = env['TZ'];
+    env['TZ'] = timeZone;
+    try {
+      body();
+    } finally {
+      if (previous === undefined) {
+        delete env['TZ'];
+      } else {
+        env['TZ'] = previous;
+      }
+    }
+  }
+
+  it.each(['text', 'number', 'boolean', 'date', 'datetime'] as const)(
+    'returns null for null, undefined and empty text in a %s column',
+    (kind) => {
+      expect(toCell(null, kind)).toBeNull();
+      expect(toCell(undefined, kind)).toBeNull();
+      expect(toCell('', kind)).toBeNull();
+    }
+  );
+
+  describe('dates', () => {
+    it('returns a Date at UTC midnight of the calendar day for a date column', () => {
+      expect(toCell('2024-01-05', 'date')).toEqual(new Date(Date.UTC(2024, 0, 5)));
+    });
+
+    it('drops the time part of a date column value', () => {
+      expect(toCell('2024-01-05T00:00:00.000+00:00', 'date')).toEqual(new Date(Date.UTC(2024, 0, 5)));
+    });
+
+    it('uses the calendar day of an epoch number in a date column', () => {
+      const epoch = new Date(2024, 0, 5, 13, 0).getTime();
+
+      expect(toCell(epoch, 'date')).toEqual(new Date(Date.UTC(2024, 0, 5)));
+    });
+
+    it('keeps the wall-clock time of a datetime without offset', () => {
+      expect(toCell('2024-01-05T14:30:00', 'datetime')).toEqual(new Date(Date.UTC(2024, 0, 5, 14, 30)));
+      expect(toCell('2024-01-05 08:05:09', 'datetime')).toEqual(new Date(Date.UTC(2024, 0, 5, 8, 5)));
+    });
+
+    it('writes the browser-local wall-clock time of a datetime that carries an offset', () => {
+      const iso = '2024-01-05T10:30:00.000+00:00';
+      const local = new Date(iso);
+      const expected = new Date(
+        Date.UTC(local.getFullYear(), local.getMonth(), local.getDate(), local.getHours(), local.getMinutes())
+      );
+
+      expect(toCell(iso, 'datetime')).toEqual(expected);
+    });
+
+    it.each<[string, number]>([
+      ['America/Mexico_City', 360],
+      ['Pacific/Auckland', -780],
+      ['UTC', 0]
+    ])(
+      'keeps the calendar day and time in the %s timezone',
+      (timeZone, januaryOffsetMinutes) => {
+        withTimeZone(timeZone, () => {
+          // Guards against a vacuous pass: the timezone switch must really be in effect.
+          expect(new Date(2024, 0, 5).getTimezoneOffset()).toBe(januaryOffsetMinutes);
+          expect(toCell('2024-01-05', 'date')).toEqual(new Date(Date.UTC(2024, 0, 5)));
+          expect(toCell('2024-12-31', 'date')).toEqual(new Date(Date.UTC(2024, 11, 31)));
+          expect(toCell('2024-01-05T23:45:00', 'datetime')).toEqual(new Date(Date.UTC(2024, 0, 5, 23, 45)));
+        });
+      }
+    );
+
+    it('keeps an unparsable date as plain text', () => {
+      expect(toCell('not a date', 'date')).toBe('not a date');
+      expect(toCell('not a date', 'datetime')).toBe('not a date');
+    });
+  });
+
+  describe('numbers', () => {
+    it('keeps numbers and converts numeric strings', () => {
+      expect(toCell(1250, 'number')).toBe(1250);
+      expect(toCell(0, 'number')).toBe(0);
+      expect(toCell('1250', 'number')).toBe(1250);
+      expect(toCell('12.5', 'number')).toBe(12.5);
+      expect(toCell('-12.50', 'number')).toBe(-12.5);
+    });
+
+    it('converts a string with at most 15 significant digits, ignoring sign, point and leading zeros', () => {
+      expect(toCell('123456789012345', 'number')).toBe(123456789012345);
+      expect(toCell('-0012.50', 'number')).toBe(-12.5);
+      expect(toCell('0.000123456789012345', 'number')).toBe(0.000123456789012345);
+    });
+
+    it('keeps a string with more than 15 significant digits as text so no digit is lost', () => {
+      expect(toCell('9007199254740993', 'number')).toBe('9007199254740993');
+      expect(toCell('12345678901234567.89', 'number')).toBe('12345678901234567.89');
+    });
+
+    it('keeps a value that is not a finite number as plain text', () => {
+      expect(toCell('abc', 'number')).toBe('abc');
+      expect(toCell(Infinity, 'number')).toBe('Infinity');
+      expect(toCell(Number.NaN, 'number')).toBe('NaN');
+    });
+  });
+
+  describe('booleans', () => {
+    it('returns Sí / No for true, false, 1, 0 and their text forms', () => {
+      expect(toCell(true, 'boolean')).toBe('Sí');
+      expect(toCell(1, 'boolean')).toBe('Sí');
+      expect(toCell('1', 'boolean')).toBe('Sí');
+      expect(toCell('true', 'boolean')).toBe('Sí');
+      expect(toCell(false, 'boolean')).toBe('No');
+      expect(toCell(0, 'boolean')).toBe('No');
+      expect(toCell('0', 'boolean')).toBe('No');
+      expect(toCell('false', 'boolean')).toBe('No');
+    });
+
+    it('keeps an unrecognized boolean as plain text', () => {
+      expect(toCell('maybe', 'boolean')).toBe('maybe');
+    });
+  });
+
+  describe('text', () => {
+    it('returns text as is and stringifies other values', () => {
+      expect(toCell('Ana', 'text')).toBe('Ana');
+      expect(toCell('<b>x</b>', 'text')).toBe('<b>x</b>');
+      expect(toCell(42, 'text')).toBe('42');
+      expect(toCell(true, 'text')).toBe('true');
+    });
+
+    it.each(['=1+1', '+1', '-1', '@SUM(A1)'])(
+      'leaves %s untouched because the formula guard is applied by the export service',
+      (value) => {
+        expect(toCell(value, 'text')).toBe(value);
+      }
+    );
   });
 });

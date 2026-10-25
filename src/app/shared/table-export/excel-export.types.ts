@@ -3,6 +3,8 @@ export interface ExcelExportColumn<T> {
   key: keyof T | string;
   value: (row: T) => string | number | boolean | Date | null | undefined;
   width?: number;
+  /** Spreadsheet number format (e.g. `dd/mm/yyyy`) applied to this column's data cells, never to the header. */
+  numFmt?: string;
 }
 
 export interface ExcelExportConfig<T> {
