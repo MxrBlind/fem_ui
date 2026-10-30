@@ -63,8 +63,12 @@ export class ExcelExportService {
   private writeHeader<T>(sheet: Worksheet, columns: ExcelExportColumn<T>[]): void {
     const headerRow = sheet.addRow(columns.map((c) => c.header));
     headerRow.font = { bold: true };
-    const lastCol = String.fromCharCode('A'.charCodeAt(0) + columns.length - 1);
-    sheet.autoFilter = `A1:${lastCol}1`;
+    if (columns.length > 0) {
+      sheet.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: 1, column: columns.length },
+      };
+    }
   }
 
   private writeRows<T>(
@@ -74,7 +78,13 @@ export class ExcelExportService {
   ): void {
     for (const row of rows) {
       const values = columns.map((c) => this.sanitize(c.value(row)));
-      sheet.addRow(values);
+      const sheetRow = sheet.addRow(values);
+      columns.forEach((column, index) => {
+        const value = values[index];
+        if (column.numFmt && (value instanceof Date || typeof value === 'number')) {
+          sheetRow.getCell(index + 1).numFmt = column.numFmt;
+        }
+      });
     }
   }
 

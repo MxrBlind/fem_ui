@@ -1,4 +1,11 @@
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { Route, Router, UrlSegment, UrlTree, provideRouter } from '@angular/router';
+
 import { roleGuard } from '@core/auth/auth.guards';
+import { AuthUser } from '@core/auth/rbac';
+import { AuthService } from '@core/services/auth.service';
+import { ReportBuilderComponent } from '../reports/report-builder/report-builder.component';
 import { SelfEnrollmentComponent } from '../self-enrollment/self-enrollment/self-enrollment.component';
 import { SHELL_ROUTES } from './shell.routes';
 
@@ -40,5 +47,52 @@ describe('SHELL_ROUTES', () => {
     expect(route?.canMatch).toEqual([roleGuard]);
     const loaded = await (route?.loadComponent as () => Promise<unknown>)();
     expect(loaded).toBe(SelfEnrollmentComponent);
+  });
+
+  describe('"reportes" path', () => {
+    const admin: AuthUser = { id: 1, username: 'a', role: 'admin', rawRole: 'admin' };
+    const teacher: AuthUser = { id: 2, username: 't', role: 'teacher', rawRole: 'teacher' };
+    const student: AuthUser = { id: 3, username: 's', role: 'student', rawRole: 'student' };
+
+    function runCanMatch(user: AuthUser | null): boolean | UrlTree {
+      const route = SHELL_ROUTES.find((r) => r.path === 'reportes') as Route;
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([]),
+          { provide: AuthService, useValue: { currentUser: signal(user).asReadonly() } },
+        ],
+      });
+      const guard = route.canMatch?.[0] as (route: Route, segments: UrlSegment[]) => boolean | UrlTree;
+      return TestBed.runInInjectionContext(() => guard(route, []));
+    }
+
+    it('is admin-only, guarded by roleGuard and lazy loads the report builder', async () => {
+      const route = SHELL_ROUTES.find((r) => r.path === 'reportes');
+      expect(route).toBeDefined();
+      expect(route?.data?.['roles']).toEqual(['admin']);
+      expect(route?.canMatch).toEqual([roleGuard]);
+      const loaded = await (route?.loadComponent as () => Promise<unknown>)();
+      expect(loaded).toBe(ReportBuilderComponent);
+    });
+
+    it('matches for an admin', () => {
+      expect(runCanMatch(admin)).toBe(true);
+    });
+
+    it.each([
+      ['teacher', teacher],
+      ['student', student],
+    ])('does not match for a %s, who is redirected to their home', (_label, user) => {
+      const result = runCanMatch(user);
+
+      expect(result).toBeInstanceOf(UrlTree);
+      expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).not.toBe('/reportes');
+    });
+
+    it('does not match for an unauthenticated user, who is sent to /login', () => {
+      const result = runCanMatch(null) as UrlTree;
+
+      expect(TestBed.inject(Router).serializeUrl(result)).toBe('/login');
+    });
   });
 });
