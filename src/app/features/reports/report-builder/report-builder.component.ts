@@ -23,6 +23,11 @@ function notBlank(control: AbstractControl<string>): ValidationErrors | null {
   return control.value.trim().length === 0 ? { blank: true } : null;
 }
 
+/** Prompts are single-line: each line break (`\r\n`, `\r` or `\n`) becomes one space. */
+export function toSingleLine(text: string): string {
+  return text.replace(/\r\n|\r|\n/g, ' ');
+}
+
 @Component({
   selector: 'app-report-builder',
   standalone: true,
@@ -58,12 +63,38 @@ export class ReportBuilderComponent {
   private readonly promptValue = toSignal(this.form.controls.prompt.valueChanges, { initialValue: '' });
   readonly promptLength = computed(() => this.promptValue().length);
 
+  /** Enter (with or without modifiers) submits and never inserts a line break, except while an IME is composing. */
+  onPromptKeydown(event: KeyboardEvent): void {
+    // keyCode 229 is how Safari reports keys that belong to an IME composition.
+    if (event.key !== 'Enter' || event.isComposing || event.keyCode === 229) return;
+
+    event.preventDefault();
+    this.onSubmit();
+  }
+
+  /** Pasted line breaks become spaces; pastes without line breaks are left to the browser. */
+  onPromptPaste(event: ClipboardEvent): void {
+    const pasted = event.clipboardData?.getData('text');
+    if (!pasted || toSingleLine(pasted) === pasted) return;
+
+    event.preventDefault();
+    const field = event.target as HTMLTextAreaElement;
+    const { value, selectionStart, selectionEnd } = field;
+    // Setting the value programmatically bypasses `maxlength`, so cut the insertion to the remaining room.
+    const room = PROMPT_MAX_LENGTH - (value.length - (selectionEnd - selectionStart));
+    const inserted = toSingleLine(pasted).slice(0, Math.max(room, 0));
+
+    this.form.controls.prompt.setValue(value.slice(0, selectionStart) + inserted + value.slice(selectionEnd));
+    const caret = selectionStart + inserted.length;
+    field.setSelectionRange(caret, caret);
+  }
+
   onSubmit(): void {
     if (this.form.invalid || this.loading()) return;
 
     this.loading.set(true);
     this.reportService
-      .generate(this.form.controls.prompt.value.trim())
+      .generate(toSingleLine(this.form.controls.prompt.value).trim())
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.loading.set(false))

@@ -30,6 +30,12 @@
   justify-content: flex-end;
 }
 
+.report-builder__spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 .report-builder__result {
   margin-top: 24px;
 }
