@@ -7,10 +7,12 @@
         <mat-label>Quiero un reporte que contenga…</mat-label>
         <textarea
           matInput
-          rows="1"
+          rows="2"
           formControlName="prompt"
           [attr.maxlength]="maxLength"
           data-testid="report-prompt"
+          (keydown)="onPromptKeydown($event)"
+          (paste)="onPromptPaste($event)"
         ></textarea>
         <mat-hint align="end" data-testid="report-prompt-counter">{{ promptLength() }} / {{ maxLength }}</mat-hint>
         @if (form.controls.prompt.hasError('required') || form.controls.prompt.hasError('blank')) {
@@ -29,7 +31,12 @@
           [disabled]="form.invalid || loading()"
         >
           @if (loading()) {
-            <mat-progress-spinner mode="indeterminate" diameter="18" />
+            <mat-progress-spinner
+              mode="indeterminate"
+              diameter="18"
+              class="report-builder__spinner"
+              aria-hidden="true"
+            />
           }
           {{ loading() ? 'Generando…' : 'Generar' }}
         </button>

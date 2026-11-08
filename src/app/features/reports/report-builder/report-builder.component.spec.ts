@@ -12,7 +12,7 @@ import {
 } from '@core/errors/error-messages';
 import { ReportService } from '@core/services/report.service';
 import { ReportResult } from '../models/report.model';
-import { ReportBuilderComponent } from './report-builder.component';
+import { ReportBuilderComponent, toSingleLine } from './report-builder.component';
 
 const result: ReportResult = {
   reportToken: null,
@@ -75,6 +75,32 @@ function submit(fixture: ComponentFixture<ReportBuilderComponent>): void {
   fixture.detectChanges();
 }
 
+/** Dispatches a cancelable `keydown` on the prompt field and returns it, to inspect `defaultPrevented`. */
+function pressKey(
+  fixture: ComponentFixture<ReportBuilderComponent>,
+  init: KeyboardEventInit,
+  keyCode?: number
+): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+  if (keyCode !== undefined) {
+    Object.defineProperty(event, 'keyCode', { value: keyCode });
+  }
+  promptField(fixture).dispatchEvent(event);
+  fixture.detectChanges();
+  return event;
+}
+
+/** Dispatches a cancelable `paste` carrying `text` (or no clipboard data at all) on the prompt field. */
+function paste(fixture: ComponentFixture<ReportBuilderComponent>, text: string | null): Event {
+  const event = new Event('paste', { bubbles: true, cancelable: true });
+  if (text !== null) {
+    Object.defineProperty(event, 'clipboardData', { value: { getData: () => text } });
+  }
+  promptField(fixture).dispatchEvent(event);
+  fixture.detectChanges();
+  return event;
+}
+
 function succeed(h: Harness, value: ReportResult = result): void {
   h.nextRequest().next(value);
   h.nextRequest().complete();
@@ -101,10 +127,10 @@ describe('ReportBuilderComponent', () => {
       expect(root(fixture).textContent).toContain('Quiero un reporte que contenga…');
     });
 
-    it('shows the prompt field as a single line by default', () => {
+    it('shows the prompt field two lines tall by default', () => {
       const { fixture } = setup();
 
-      expect(promptField(fixture).getAttribute('rows')).toBe('1');
+      expect(promptField(fixture).getAttribute('rows')).toBe('2');
     });
 
     it('disables "Generar" for an empty prompt', () => {
@@ -168,7 +194,28 @@ describe('ReportBuilderComponent', () => {
 
       expect(h.fixture.componentInstance.loading()).toBe(true);
       expect(generateButton(h.fixture).disabled).toBe(true);
-      expect(root(h.fixture).querySelector('mat-progress-spinner')).not.toBeNull();
+      const spinner = root(h.fixture).querySelector('mat-progress-spinner');
+      expect(spinner).not.toBeNull();
+      expect(spinner?.classList).toContain('report-builder__spinner');
+      expect(spinner?.getAttribute('aria-hidden')).toBe('true');
+      expect(generateButton(h.fixture).textContent).toContain('Generando…');
+    });
+
+    it('shows "Generar" without a spinner while idle', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'x');
+
+      expect(generateButton(h.fixture).textContent?.trim()).toBe('Generar');
+      expect(root(h.fixture).querySelector('mat-progress-spinner')).toBeNull();
+    });
+
+    it('replaces line breaks with spaces and trims the prompt before sending it', () => {
+      const h = setup();
+      typePrompt(h.fixture, '  alumnos\ncon beca  ');
+
+      submit(h.fixture);
+
+      expect(h.generate).toHaveBeenCalledWith('alumnos con beca');
     });
 
     it('does not send a second request while one is in flight', () => {
@@ -299,5 +346,156 @@ describe('ReportBuilderComponent', () => {
 
       expect(h.generate).toHaveBeenCalledTimes(2);
     });
+  });
+
+  describe('keyboard submit', () => {
+    it('generates the report with the trimmed prompt when Enter is pressed', () => {
+      const h = setup();
+      typePrompt(h.fixture, '  alumnos con beca  ');
+
+      const event = pressKey(h.fixture, { key: 'Enter' });
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(h.generate).toHaveBeenCalledTimes(1);
+      expect(h.generate).toHaveBeenCalledWith('alumnos con beca');
+    });
+
+    it.each([{ shiftKey: true }, { ctrlKey: true }, { altKey: true }])(
+      'never inserts a line break for Enter with %j',
+      (modifier) => {
+        const h = setup();
+        typePrompt(h.fixture, 'x');
+
+        const event = pressKey(h.fixture, { key: 'Enter', ...modifier });
+
+        expect(event.defaultPrevented).toBe(true);
+      }
+    );
+
+    it.each(['', '   '])('does not generate the report for the prompt %j', (value) => {
+      const h = setup();
+      typePrompt(h.fixture, value);
+
+      pressKey(h.fixture, { key: 'Enter' });
+
+      expect(h.generate).not.toHaveBeenCalled();
+    });
+
+    it('does not send a second request when Enter is pressed again while one is in flight', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'x');
+
+      pressKey(h.fixture, { key: 'Enter' });
+      pressKey(h.fixture, { key: 'Enter' });
+
+      expect(h.generate).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets the input method confirm its text instead of submitting while composing', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'x');
+
+      const event = pressKey(h.fixture, { key: 'Enter', isComposing: true });
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(h.generate).not.toHaveBeenCalled();
+    });
+
+    it('does not submit for the legacy composition key code 229', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'x');
+
+      const event = pressKey(h.fixture, { key: 'Enter' }, 229);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(h.generate).not.toHaveBeenCalled();
+    });
+
+    it('leaves other keys alone', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'x');
+
+      const event = pressKey(h.fixture, { key: 'a' });
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(h.generate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('paste', () => {
+    it('replaces pasted line breaks with spaces and updates the counter', () => {
+      const h = setup();
+
+      const event = paste(h.fixture, 'alumnos\ncon beca');
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(promptField(h.fixture).value).toBe('alumnos con beca');
+      expect(h.fixture.componentInstance.form.controls.prompt.value).toBe('alumnos con beca');
+      expect(root(h.fixture).querySelector('[data-testid="report-prompt-counter"]')?.textContent?.trim()).toBe(
+        '16 / 2000'
+      );
+    });
+
+    it('replaces only the selection and puts the caret after the pasted text', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'alumnos XXX beca');
+      promptField(h.fixture).setSelectionRange(8, 11);
+
+      paste(h.fixture, 'con\nmucha');
+
+      expect(promptField(h.fixture).value).toBe('alumnos con mucha beca');
+      expect(promptField(h.fixture).selectionStart).toBe(17);
+      expect(promptField(h.fixture).selectionEnd).toBe(17);
+    });
+
+    it('cuts the pasted text so the prompt never exceeds 2000 characters', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'x'.repeat(1995));
+      promptField(h.fixture).setSelectionRange(1995, 1995);
+
+      paste(h.fixture, 'abc\ndefgh');
+
+      expect(promptField(h.fixture).value).toBe('x'.repeat(1995) + 'abc d');
+    });
+
+    it('lets the browser paste text without line breaks', () => {
+      const h = setup();
+
+      const event = paste(h.fixture, 'alumnos con beca');
+
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('ignores a paste without clipboard data', () => {
+      const h = setup();
+      typePrompt(h.fixture, 'x');
+
+      const event = paste(h.fixture, null);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(promptField(h.fixture).value).toBe('x');
+    });
+  });
+});
+
+describe('toSingleLine', () => {
+  it.each([
+    ['a\nb', 'a b'],
+    ['a\r\nb', 'a b'],
+    ['a\rb', 'a b']
+  ])('replaces the line break in %j with one space', (input, expected) => {
+    expect(toSingleLine(input)).toBe(expected);
+  });
+
+  it('replaces every line break with its own space without collapsing them', () => {
+    expect(toSingleLine('a\r\n\r\nb')).toBe('a  b');
+  });
+
+  it('returns text without line breaks unchanged', () => {
+    expect(toSingleLine('  alumnos con beca  ')).toBe('  alumnos con beca  ');
+  });
+
+  it('keeps an empty string empty', () => {
+    expect(toSingleLine('')).toBe('');
   });
 });
