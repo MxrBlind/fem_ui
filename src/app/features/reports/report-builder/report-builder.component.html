@@ -45,6 +45,11 @@
   </mat-card>
 
   @if (result(); as report) {
-    <app-report-result class="report-builder__result" [result]="report" />
+    <app-report-result
+      class="report-builder__result"
+      [result]="report"
+      (reportSaved)="reportSaved.emit($event)"
+      (regenerateRequested)="onRegenerate()"
+    />
   }
 </section>

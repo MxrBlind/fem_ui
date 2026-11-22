@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
+import { By } from '@angular/platform-browser';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subject } from 'rxjs';
@@ -11,7 +12,8 @@ import {
   REPORT_UNSAFE_QUERY_MESSAGE
 } from '@core/errors/error-messages';
 import { ReportService } from '@core/services/report.service';
-import { ReportResult } from '../models/report.model';
+import { ReportResult, SavedReport } from '../models/report.model';
+import { ReportResultComponent } from '../report-result/report-result.component';
 import { ReportBuilderComponent, toSingleLine } from './report-builder.component';
 
 const result: ReportResult = {
@@ -474,6 +476,112 @@ describe('ReportBuilderComponent', () => {
 
       expect(event.defaultPrevented).toBe(false);
       expect(promptField(h.fixture).value).toBe('x');
+    });
+  });
+
+  describe('save report integration', () => {
+    const tokenResult: ReportResult = { ...result, reportToken: 't-1' };
+
+    function resultChild(fixture: ComponentFixture<ReportBuilderComponent>): ReportResultComponent {
+      return fixture.debugElement.query(By.directive(ReportResultComponent)).componentInstance;
+    }
+
+    function interpretation(fixture: ComponentFixture<ReportBuilderComponent>): string {
+      return root(fixture).querySelector('[data-testid="report-interpretation"]')?.textContent?.trim() ?? '';
+    }
+
+    /** Generates a first report from `prompt` so a result (with a token) is on screen. */
+    function showResultFrom(h: Harness, prompt: string): void {
+      typePrompt(h.fixture, prompt);
+      submit(h.fixture);
+      succeed(h, tokenResult);
+    }
+
+    function requestRegeneration(h: Harness): void {
+      resultChild(h.fixture).regenerateRequested.emit();
+      h.fixture.detectChanges();
+    }
+
+    describe('regenerating after an expired token', () => {
+      it('generates again with the sanitized prompt that produced the result, not the edited field', () => {
+        const h = setup();
+        showResultFrom(h, '  alumnos\ncon beca  ');
+
+        typePrompt(h.fixture, 'otra cosa');
+        requestRegeneration(h);
+
+        expect(h.generate).toHaveBeenCalledTimes(2);
+        expect(h.generate).toHaveBeenLastCalledWith('alumnos con beca');
+        expect(promptField(h.fixture).value).toBe('otra cosa');
+      });
+
+      it('keeps the prompt of the visible result when a later generation fails', () => {
+        const h = setup();
+        showResultFrom(h, 'primero');
+        typePrompt(h.fixture, 'segundo');
+        submit(h.fixture);
+        fail(h, 502, 'REPORT_GENERATION_FAILED');
+
+        requestRegeneration(h);
+
+        expect(h.generate).toHaveBeenLastCalledWith('primero');
+      });
+
+      it('replaces the result with the new one, which can be saved again', () => {
+        const h = setup();
+        showResultFrom(h, 'alumnos con beca');
+
+        requestRegeneration(h);
+        succeed(h, { ...tokenResult, reportToken: 't-2', interpretation: 'Alumnos con beca, de nuevo' });
+
+        expect(interpretation(h.fixture)).toBe('Se interpretó como: Alumnos con beca, de nuevo');
+        expect(root(h.fixture).querySelector('[data-testid="report-save-btn"]')).not.toBeNull();
+      });
+
+      it('shows the generation error and keeps the previous result when it fails', () => {
+        const h = setup();
+        showResultFrom(h, 'alumnos con beca');
+        h.snackOpen.mockClear();
+
+        requestRegeneration(h);
+        fail(h, 502, 'REPORT_GENERATION_FAILED');
+
+        expect(h.snackOpen).toHaveBeenCalledTimes(1);
+        expect(h.snackOpen.mock.calls[0][0]).toBe(REPORT_GENERATION_FAILED_MESSAGE);
+        expect(interpretation(h.fixture)).toBe(`Se interpretó como: ${tokenResult.interpretation}`);
+      });
+
+      it('is ignored while a generation is already in flight', () => {
+        const h = setup();
+        showResultFrom(h, 'primero');
+        typePrompt(h.fixture, 'segundo');
+        submit(h.fixture);
+        expect(h.generate).toHaveBeenCalledTimes(2);
+
+        requestRegeneration(h);
+
+        expect(h.generate).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('re-emits the saved report so a saved-reports list can refresh', () => {
+      const h = setup();
+      const reportSaved = vi.fn();
+      h.fixture.componentInstance.reportSaved.subscribe(reportSaved);
+      showResultFrom(h, 'alumnos con beca');
+      const saved: SavedReport = {
+        id: 3,
+        name: 'Alumnos con beca',
+        description: null,
+        originalPrompt: 'alumnos con beca',
+        createdDate: '2026-11-22T01:00:00',
+        lastRunDate: null
+      };
+
+      resultChild(h.fixture).reportSaved.emit(saved);
+
+      expect(reportSaved).toHaveBeenCalledTimes(1);
+      expect(reportSaved).toHaveBeenCalledWith(saved);
     });
   });
 });

@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,16 +12,12 @@ import { finalize } from 'rxjs';
 import { parseApiError } from '@core/errors/api-error';
 import { REPORT_GENERATION_FAILED_MESSAGE, resolveErrorMessage } from '@core/errors/error-messages';
 import { ReportService } from '@core/services/report.service';
-import { ReportResult } from '../models/report.model';
+import { notBlank } from '@shared/validators/not-blank.validator';
+import { ReportResult, SavedReport } from '../models/report.model';
 import { ReportResultComponent } from '../report-result/report-result.component';
 
 export const PROMPT_MAX_LENGTH = 2000;
 export const PAGE_TITLE = 'Generador inteligente';
-
-/** Rejects text that is empty once trimmed, which `Validators.required` lets through. */
-function notBlank(control: AbstractControl<string>): ValidationErrors | null {
-  return control.value.trim().length === 0 ? { blank: true } : null;
-}
 
 /** Prompts are single-line: each line break (`\r\n`, `\r` or `\n`) becomes one space. */
 export function toSingleLine(text: string): string {
@@ -55,6 +51,12 @@ export class ReportBuilderComponent {
 
   readonly loading = signal(false);
   readonly result = signal<ReportResult | null>(null);
+
+  /** Re-emits a report saved from the result, so a saved-reports list can refresh. */
+  readonly reportSaved = output<SavedReport>();
+
+  /** The sanitized prompt that produced the visible result; the textarea may have been edited since. */
+  private lastGeneratedPrompt: string | null = null;
 
   readonly form = inject(FormBuilder).nonNullable.group({
     prompt: ['', [Validators.required, notBlank, Validators.maxLength(PROMPT_MAX_LENGTH)]],
@@ -92,15 +94,29 @@ export class ReportBuilderComponent {
   onSubmit(): void {
     if (this.form.invalid || this.loading()) return;
 
+    this.generate(toSingleLine(this.form.controls.prompt.value).trim());
+  }
+
+  /** Generates the visible result's report again, e.g. after its save token expired. */
+  onRegenerate(): void {
+    if (this.loading() || this.lastGeneratedPrompt === null) return;
+
+    this.generate(this.lastGeneratedPrompt);
+  }
+
+  private generate(prompt: string): void {
     this.loading.set(true);
     this.reportService
-      .generate(toSingleLine(this.form.controls.prompt.value).trim())
+      .generate(prompt)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
         finalize(() => this.loading.set(false))
       )
       .subscribe({
-        next: (report) => this.result.set(report),
+        next: (report) => {
+          this.lastGeneratedPrompt = prompt;
+          this.result.set(report);
+        },
         error: (err: unknown) => {
           console.error('[report-builder] failed to generate the report, status', parseApiError(err).status);
           this.snackBar.open(resolveErrorMessage(err, REPORT_GENERATION_FAILED_MESSAGE), 'Cerrar', {

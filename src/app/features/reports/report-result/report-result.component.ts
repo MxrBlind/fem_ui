@@ -1,27 +1,40 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   effect,
+  inject,
   input,
   linkedSignal,
+  output,
   viewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
+import { MatSnackBar, MatSnackBarRef, TextOnlySnackBar } from '@angular/material/snack-bar';
 import { MatSort, MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
+import { take } from 'rxjs';
 
+import { REPORT_SAVED_MESSAGE, REPORT_TOKEN_EXPIRED_MESSAGE } from '@core/errors/error-messages';
 import {
   ExcelExportColumn,
   ExcelExportConfig,
   ExportToExcelButtonComponent,
 } from '@shared/table-export';
-import { ReportResult } from '../models/report.model';
+import { ReportResult, SavedReport } from '../models/report.model';
+import {
+  SaveReportDialogComponent,
+  SaveReportDialogData,
+  SaveReportDialogResult
+} from '../report-save/save-report-dialog.component';
 import {
   ExcelCell,
   ReportCellKind,
@@ -32,6 +45,10 @@ import {
 } from './report-cell-format';
 
 export const EMPTY_RESULT_MESSAGE = 'El reporte no devolvió resultados.';
+export const REGENERATE_ACTION_LABEL = 'Generar de nuevo';
+
+/** Long enough to act on the "Generar de nuevo" action. */
+const EXPIRY_NOTICE_DURATION_MS = 10_000;
 
 /** Spreadsheet number formats of the date columns; other kinds keep the default format. */
 export const EXCEL_DATE_FORMAT = 'dd/mm/yyyy';
@@ -79,10 +96,30 @@ function excelNumberFormat(kind: ReportCellKind): string | undefined {
   styleUrl: './report-result.component.scss',
 })
 export class ReportResultComponent {
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
+
   readonly result = input.required<ReportResult>();
+
+  /** Emits the saved report so a saved-reports list can refresh. */
+  readonly reportSaved = output<SavedReport>();
+  /** The report token expired; the owner should generate the same report again. */
+  readonly regenerateRequested = output<void>();
 
   readonly emptyMessage = EMPTY_RESULT_MESSAGE;
   readonly pageSizeOptions = [10, 25, 50, 100];
+
+  /** A token is single use: it is consumed once saved or reported as expired. A new result starts unconsumed. */
+  private readonly tokenConsumed = linkedSignal<ReportResult, boolean>({
+    source: this.result,
+    computation: () => false,
+  });
+
+  readonly canSave = computed(() => this.result().reportToken !== null && !this.tokenConsumed());
+
+  /** The open "expired" snackbar, dismissed when a new result arrives so its action cannot regenerate a stale prompt. */
+  private expiryNotice: MatSnackBarRef<TextOnlySnackBar> | null = null;
 
   /** Cleared whenever a new result arrives. */
   readonly filterText = linkedSignal<ReportResult, string>({
@@ -177,6 +214,11 @@ export class ReportResultComponent {
       paginator.firstPage();
     });
     effect(() => {
+      this.result();
+      this.expiryNotice?.dismiss();
+      this.expiryNotice = null;
+    });
+    effect(() => {
       this.dataSource.filter = this.normalizedFilter();
       // The data source only clamps the page index on filter changes; the page must restart at the first one.
       this.paginator()?.firstPage();
@@ -189,6 +231,40 @@ export class ReportResultComponent {
 
   clearFilter(): void {
     this.filterText.set('');
+  }
+
+  onSave(): void {
+    const reportToken = this.result().reportToken;
+    if (reportToken === null || this.tokenConsumed()) return;
+
+    this.dialog
+      .open<SaveReportDialogComponent, SaveReportDialogData, SaveReportDialogResult>(SaveReportDialogComponent, {
+        data: { reportToken },
+        disableClose: true,
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((outcome) => this.handleSaveOutcome(outcome));
+  }
+
+  /** `undefined` means the dialog was dismissed, so the token is still usable. */
+  private handleSaveOutcome(outcome: SaveReportDialogResult | undefined): void {
+    if (!outcome) return;
+
+    this.tokenConsumed.set(true);
+    if (outcome.outcome === 'saved') {
+      this.snackBar.open(REPORT_SAVED_MESSAGE, 'Cerrar', { duration: 3000 });
+      this.reportSaved.emit(outcome.report);
+      return;
+    }
+
+    this.expiryNotice = this.snackBar.open(REPORT_TOKEN_EXPIRED_MESSAGE, REGENERATE_ACTION_LABEL, {
+      duration: EXPIRY_NOTICE_DURATION_MS,
+    });
+    this.expiryNotice
+      .onAction()
+      .pipe(take(1))
+      .subscribe(() => this.regenerateRequested.emit());
   }
 }
 
