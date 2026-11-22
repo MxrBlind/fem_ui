@@ -1,9 +1,18 @@
+import { vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { By } from '@angular/platform-browser';
+import { MatDialog, MatDialogConfig } from '@angular/material/dialog';
 import { MatPaginator } from '@angular/material/paginator';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject, of } from 'rxjs';
 
-import { ReportCellValue, ReportColumn, ReportResult } from '../models/report.model';
+import {
+  REPORT_SAVED_MESSAGE,
+  REPORT_TOKEN_EXPIRED_MESSAGE
+} from '@core/errors/error-messages';
+import { ReportCellValue, ReportColumn, ReportResult, SavedReport } from '../models/report.model';
+import { SaveReportDialogComponent, SaveReportDialogResult } from '../report-save/save-report-dialog.component';
 import { ReportResultComponent } from './report-result.component';
 
 function makeResult(
@@ -453,6 +462,183 @@ describe('ReportResultComponent', () => {
       const fixture = setup(makeResult(textColumns(1), [['x']]));
 
       expect(el(fixture).querySelector('app-export-to-excel-button')).not.toBeNull();
+    });
+  });
+
+  describe('save report', () => {
+    const savedReport: SavedReport = {
+      id: 9,
+      name: 'Alumnos activos',
+      description: null,
+      originalPrompt: 'alumnos activos',
+      createdDate: '2026-11-22T01:00:00',
+      lastRunDate: null
+    };
+
+    function tokenResult(reportToken: string | null = 't-1', rows: ReportCellValue[][] = [['a', 'b']]): ReportResult {
+      return { ...makeResult(textColumns(2), rows), reportToken };
+    }
+
+    function saveButton(fixture: ComponentFixture<ReportResultComponent>): HTMLButtonElement | null {
+      return el(fixture).querySelector('[data-testid="report-save-btn"]');
+    }
+
+    function clickSave(fixture: ComponentFixture<ReportResultComponent>): void {
+      saveButton(fixture)?.click();
+      fixture.detectChanges();
+      fixture.detectChanges();
+    }
+
+    /** Stubs the dialog (it answers `dialogResult` at once) and the snackbar, then renders `result`. */
+    function setupSave(dialogResult: SaveReportDialogResult | undefined, result: ReportResult = tokenResult()) {
+      const dialogOpen = vi
+        .spyOn(MatDialog.prototype, 'open')
+        .mockReturnValue({ afterClosed: () => of(dialogResult) } as never);
+      const snackAction$ = new Subject<void>();
+      const snackRef = { onAction: () => snackAction$.asObservable(), dismiss: vi.fn() };
+      const snackOpen = vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue(snackRef as never);
+
+      const fixture = setup(result);
+      const reportSaved = vi.fn();
+      const regenerateRequested = vi.fn();
+      fixture.componentInstance.reportSaved.subscribe(reportSaved);
+      fixture.componentInstance.regenerateRequested.subscribe(regenerateRequested);
+
+      return { fixture, dialogOpen, snackOpen, snackRef, snackAction$, reportSaved, regenerateRequested };
+    }
+
+    afterEach(() => vi.restoreAllMocks());
+
+    describe('button visibility', () => {
+      it('is shown for a result with a token, immediately before the export action', () => {
+        const fixture = setup(tokenResult());
+
+        const button = saveButton(fixture);
+        expect(button).not.toBeNull();
+        expect(button?.textContent).toContain('Guardar reporte');
+        expect(el(fixture).querySelector('[data-testid="report-export-btn"]')?.previousElementSibling).toBe(button);
+      });
+
+      it('is not rendered for a result without a token', () => {
+        const fixture = setup(tokenResult(null));
+
+        expect(saveButton(fixture)).toBeNull();
+      });
+
+      it('is not rendered for an empty result', () => {
+        const fixture = setup(tokenResult('t-1', []));
+
+        expect(saveButton(fixture)).toBeNull();
+      });
+    });
+
+    it('opens the save dialog with the report token and without the default close paths', () => {
+      const { fixture, dialogOpen } = setupSave(undefined);
+
+      clickSave(fixture);
+
+      expect(dialogOpen).toHaveBeenCalledTimes(1);
+      const [component, config] = dialogOpen.mock.calls[0] as unknown as [unknown, MatDialogConfig<unknown>];
+      expect(component).toBe(SaveReportDialogComponent);
+      expect(config.data).toEqual({ reportToken: 't-1' });
+      expect(config.disableClose).toBe(true);
+    });
+
+    describe('when the report is saved', () => {
+      it('shows the success snackbar, hides the button and emits the saved report', () => {
+        const { fixture, snackOpen, reportSaved, regenerateRequested } = setupSave({
+          outcome: 'saved',
+          report: savedReport
+        });
+
+        clickSave(fixture);
+
+        expect(snackOpen).toHaveBeenCalledTimes(1);
+        expect(snackOpen.mock.calls[0][0]).toBe(REPORT_SAVED_MESSAGE);
+        expect(saveButton(fixture)).toBeNull();
+        expect(reportSaved).toHaveBeenCalledTimes(1);
+        expect(reportSaved).toHaveBeenCalledWith(savedReport);
+        expect(regenerateRequested).not.toHaveBeenCalled();
+      });
+
+      it('keeps the table and the export action working', () => {
+        const { fixture } = setupSave({ outcome: 'saved', report: savedReport });
+
+        clickSave(fixture);
+
+        expect(bodyRows(fixture)).toEqual([['a', 'b']]);
+        expect(el(fixture).querySelector('[data-testid="report-filter"]')).not.toBeNull();
+        expect(el(fixture).querySelector('[data-testid="report-export-btn"]')).not.toBeNull();
+      });
+
+      it('shows the button again when a new result with a token arrives', () => {
+        const { fixture } = setupSave({ outcome: 'saved', report: savedReport });
+
+        clickSave(fixture);
+        update(fixture, tokenResult('t-2'));
+
+        expect(saveButton(fixture)).not.toBeNull();
+      });
+    });
+
+    describe('when the token has expired', () => {
+      it('hides the button and offers to generate the report again, without emitting a saved event', () => {
+        const { fixture, snackOpen, reportSaved } = setupSave({ outcome: 'expired' });
+
+        clickSave(fixture);
+
+        expect(saveButton(fixture)).toBeNull();
+        expect(snackOpen).toHaveBeenCalledTimes(1);
+        const [message, action, config] = snackOpen.mock.calls[0] as unknown as [
+          string,
+          string,
+          { duration: number }
+        ];
+        expect(message).toBe(REPORT_TOKEN_EXPIRED_MESSAGE);
+        expect(action).toBe('Generar de nuevo');
+        expect(config.duration).toBeGreaterThanOrEqual(10_000);
+        expect(reportSaved).not.toHaveBeenCalled();
+      });
+
+      it('emits regenerateRequested once when "Generar de nuevo" is activated', () => {
+        const { snackAction$, fixture, regenerateRequested } = setupSave({ outcome: 'expired' });
+
+        clickSave(fixture);
+        expect(regenerateRequested).not.toHaveBeenCalled();
+        snackAction$.next();
+
+        expect(regenerateRequested).toHaveBeenCalledTimes(1);
+      });
+
+      it('dismisses the expiry snackbar when a new result arrives', () => {
+        const { fixture, snackRef } = setupSave({ outcome: 'expired' });
+
+        clickSave(fixture);
+        expect(snackRef.dismiss).not.toHaveBeenCalled();
+        update(fixture, tokenResult('t-2'));
+
+        expect(snackRef.dismiss).toHaveBeenCalledTimes(1);
+      });
+
+      it('shows the button again when a new result with a token arrives', () => {
+        const { fixture } = setupSave({ outcome: 'expired' });
+
+        clickSave(fixture);
+        update(fixture, tokenResult('t-2'));
+
+        expect(saveButton(fixture)).not.toBeNull();
+      });
+    });
+
+    it('keeps the button and stays silent when the dialog is dismissed or the name was a duplicate', () => {
+      const { fixture, snackOpen, reportSaved, regenerateRequested } = setupSave(undefined);
+
+      clickSave(fixture);
+
+      expect(saveButton(fixture)).not.toBeNull();
+      expect(snackOpen).not.toHaveBeenCalled();
+      expect(reportSaved).not.toHaveBeenCalled();
+      expect(regenerateRequested).not.toHaveBeenCalled();
     });
   });
 });

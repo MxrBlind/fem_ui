@@ -4,7 +4,7 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { ReportResult } from '../../features/reports/models/report.model';
+import { ReportResult, SavedReport } from '../../features/reports/models/report.model';
 import { ReportService } from './report.service';
 
 describe('ReportService', () => {
@@ -59,5 +59,56 @@ describe('ReportService', () => {
     expect(error).toBeInstanceOf(HttpErrorResponse);
     expect(error.status).toBe(status);
     expect(error.error.code).toBe(code);
+  });
+
+  describe('save()', () => {
+    const saveUrl = `${environment.apiBaseUrl}/api/report/saved`;
+
+    const savedReport: SavedReport = {
+      id: 7,
+      name: 'Alumnos activos',
+      description: null,
+      originalPrompt: 'alumnos activos',
+      createdDate: '2026-11-22T01:00:00',
+      lastRunDate: null
+    };
+
+    it('posts the token and name to /api/report/saved and emits the saved report', async () => {
+      const promise = firstValueFrom(service.save({ reportToken: 't-1', name: 'Alumnos activos' }));
+
+      const req = http.expectOne(saveUrl);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ reportToken: 't-1', name: 'Alumnos activos' });
+      expect('description' in req.request.body).toBe(false);
+      req.flush(savedReport, { status: 201, statusText: 'Created' });
+
+      await expect(promise).resolves.toEqual(savedReport);
+    });
+
+    it('sends the description when it is provided', async () => {
+      const promise = firstValueFrom(
+        service.save({ reportToken: 't-1', name: 'Alumnos activos', description: 'Ciclo actual' })
+      );
+
+      const req = http.expectOne(saveUrl);
+      expect(req.request.body).toEqual({ reportToken: 't-1', name: 'Alumnos activos', description: 'Ciclo actual' });
+      req.flush({ ...savedReport, description: 'Ciclo actual' }, { status: 201, statusText: 'Created' });
+
+      await expect(promise).resolves.toEqual({ ...savedReport, description: 'Ciclo actual' });
+    });
+
+    it.each([
+      [404, 'ENTITY_NOT_FOUND'],
+      [409, 'REPORT_NAME_CONFLICT']
+    ])('propagates the %i error unchanged', async (status, code) => {
+      const promise = firstValueFrom(service.save({ reportToken: 't-1', name: 'x' }));
+
+      http.expectOne(saveUrl).flush({ status, code, message: 'boom' }, { status, statusText: 'Error' });
+
+      const error = (await promise.catch((e: unknown) => e)) as HttpErrorResponse;
+      expect(error).toBeInstanceOf(HttpErrorResponse);
+      expect(error.status).toBe(status);
+      expect(error.error.code).toBe(code);
+    });
   });
 });

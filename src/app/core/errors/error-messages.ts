@@ -12,7 +12,16 @@ export const REPORT_EXECUTION_FAILED_MESSAGE =
 export const REPORT_GENERATION_FAILED_MESSAGE =
   'No se pudo generar el reporte. Inténtalo de nuevo más tarde.';
 
-const CODE_MESSAGES: ReadonlyMap<string, string> = new Map([
+/**
+ * Messages of the save-report flow. They are not in `CODE_MESSAGES` because `ENTITY_NOT_FOUND` only means
+ * "expired token" on `POST /api/report/saved`, and the duplicate name is shown inline in the dialog.
+ */
+export const REPORT_SAVED_MESSAGE = 'Reporte guardado correctamente.';
+export const REPORT_NAME_CONFLICT_MESSAGE = 'Ya existe un reporte con ese nombre';
+export const REPORT_TOKEN_EXPIRED_MESSAGE = 'El reporte expiró, genera el reporte de nuevo para guardarlo';
+export const REPORT_SAVE_FAILED_MESSAGE = 'No se pudo guardar el reporte. Inténtalo de nuevo más tarde.';
+
+const CODE_MESSAGES:ReadonlyMap<string, string> = new Map([
   ['ACCESS_DENIED', NOT_ALLOWED_MESSAGE],
   ['ENTITY_NOT_FOUND', NOT_FOUND_MESSAGE],
   ['UNSAFE_QUERY', REPORT_UNSAFE_QUERY_MESSAGE],

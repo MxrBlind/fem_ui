@@ -16,3 +16,20 @@ export interface ReportResult {
   rowCount: number;
   executionMs: number;
 }
+
+/** Body of `POST /api/report/saved`. `description` is left out when the admin does not provide one. */
+export interface SaveReportRequest {
+  reportToken: string;
+  name: string;
+  description?: string;
+}
+
+/** Saved report metadata returned by `POST /api/report/saved`. The SQL is never exposed. */
+export interface SavedReport {
+  id: number;
+  name: string;
+  description: string | null;
+  originalPrompt: string;
+  createdDate: string;
+  lastRunDate: string | null;
+}
