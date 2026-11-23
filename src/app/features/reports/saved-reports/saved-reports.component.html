@@ -1,0 +1,47 @@
+<section class="saved-reports" data-testid="saved-reports-page">
+  @if (loading()) {
+    <div class="saved-reports__loading" role="status" aria-busy="true" data-testid="saved-reports-loading">
+      <mat-progress-spinner mode="indeterminate" diameter="48" />
+    </div>
+  } @else if (loadFailed()) {
+    <!-- The failure is reported by the snackbar or the auth interceptor; nothing else is rendered. -->
+  } @else if (reports().length === 0) {
+    <div class="saved-reports__empty" data-testid="saved-reports-empty">
+      <mat-icon aria-hidden="true">inbox</mat-icon>
+      <p class="mat-body-large">{{ noSavedReportsMessage }}</p>
+    </div>
+  } @else {
+    <p class="saved-reports__heading mat-body-large" data-testid="saved-reports-heading">Reportes guardados:</p>
+
+    <mat-form-field appearance="outline" class="saved-reports__field">
+      <mat-label>Reporte</mat-label>
+      <mat-select
+        [value]="selectedReportId()"
+        (selectionChange)="onSelect($event.value)"
+        data-testid="saved-reports-select"
+      >
+        @for (report of reports(); track report.id) {
+          <mat-option [value]="report.id">{{ report.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (selectedReport(); as report) {
+      <mat-card class="saved-reports__card" data-testid="saved-report-card">
+        <mat-card-header>
+          <mat-card-title data-testid="saved-report-name">{{ report.name }}</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="saved-reports__description mat-body-large" data-testid="saved-report-description">{{
+            selectedDescription()
+          }}</p>
+        </mat-card-content>
+        <mat-card-actions class="saved-reports__actions">
+          <button mat-flat-button type="button" data-testid="saved-report-run-btn">Ejecutar</button>
+          <button mat-stroked-button type="button" data-testid="saved-report-update-btn">Actualizar</button>
+          <button mat-stroked-button color="warn" type="button" data-testid="saved-report-delete-btn">Borrar</button>
+        </mat-card-actions>
+      </mat-card>
+    }
+  }
+</section>

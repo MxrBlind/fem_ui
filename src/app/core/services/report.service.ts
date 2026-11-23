@@ -18,4 +18,9 @@ export class ReportService {
   save(request: SaveReportRequest): Observable<SavedReport> {
     return this.http.post<SavedReport>(`${this.baseUrl}/saved`, request);
   }
+
+  /** Lists the caller's saved reports, ordered by name ascending by the backend. The SQL is never returned. */
+  listSaved(): Observable<SavedReport[]> {
+    return this.http.get<SavedReport[]>(`${this.baseUrl}/saved`);
+  }
 }
