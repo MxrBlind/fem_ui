@@ -68,7 +68,8 @@
         <mat-divider />
         <p class="nav-section-header">Reportes</p>
 
-        <a mat-list-item routerLink="/reportes" routerLinkActive="active">Generador</a>
+        <a mat-list-item routerLink="/reportes" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Generador</a>
+        <a mat-list-item routerLink="/reportes/guardados" routerLinkActive="active">Guardados</a>
       </ng-container>
     </mat-nav-list>
   </mat-sidenav>

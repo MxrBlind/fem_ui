@@ -6,6 +6,7 @@ import { roleGuard } from '@core/auth/auth.guards';
 import { AuthUser } from '@core/auth/rbac';
 import { AuthService } from '@core/services/auth.service';
 import { ReportBuilderComponent } from '../reports/report-builder/report-builder.component';
+import { SavedReportsComponent } from '../reports/saved-reports/saved-reports.component';
 import { SelfEnrollmentComponent } from '../self-enrollment/self-enrollment/self-enrollment.component';
 import { SHELL_ROUTES } from './shell.routes';
 
@@ -93,6 +94,60 @@ describe('SHELL_ROUTES', () => {
       const result = runCanMatch(null) as UrlTree;
 
       expect(TestBed.inject(Router).serializeUrl(result)).toBe('/login');
+    });
+  });
+
+  describe('"reportes/guardados" path', () => {
+    const PATH = 'reportes/guardados';
+    const admin: AuthUser = { id: 1, username: 'a', role: 'admin', rawRole: 'admin' };
+    const teacher: AuthUser = { id: 2, username: 't', role: 'teacher', rawRole: 'teacher' };
+    const student: AuthUser = { id: 3, username: 's', role: 'student', rawRole: 'student' };
+
+    function runCanMatch(user: AuthUser | null): boolean | UrlTree {
+      const route = SHELL_ROUTES.find((r) => r.path === PATH) as Route;
+      TestBed.configureTestingModule({
+        providers: [
+          provideRouter([]),
+          { provide: AuthService, useValue: { currentUser: signal(user).asReadonly() } },
+        ],
+      });
+      const guard = route.canMatch?.[0] as (route: Route, segments: UrlSegment[]) => boolean | UrlTree;
+      return TestBed.runInInjectionContext(() => guard(route, []));
+    }
+
+    it('is admin-only, guarded by roleGuard and lazy loads the saved reports page', async () => {
+      const route = SHELL_ROUTES.find((r) => r.path === PATH);
+      expect(route).toBeDefined();
+      expect(route?.data?.['roles']).toEqual(['admin']);
+      expect(route?.canMatch).toEqual([roleGuard]);
+      const loaded = await (route?.loadComponent as () => Promise<unknown>)();
+      expect(loaded).toBe(SavedReportsComponent);
+    });
+
+    it('matches for an admin', () => {
+      expect(runCanMatch(admin)).toBe(true);
+    });
+
+    it.each([
+      ['teacher', teacher],
+      ['student', student],
+    ])('does not match for a %s, who is redirected away from the page', (_label, user) => {
+      const result = runCanMatch(user);
+
+      expect(result).toBeInstanceOf(UrlTree);
+      expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).not.toBe(`/${PATH}`);
+    });
+
+    it('does not match for an unauthenticated user, who is sent to /login', () => {
+      const result = runCanMatch(null) as UrlTree;
+
+      expect(TestBed.inject(Router).serializeUrl(result)).toBe('/login');
+    });
+
+    it('keeps the "reportes" route pointing at the report builder', async () => {
+      const route = SHELL_ROUTES.find((r) => r.path === 'reportes');
+      const loaded = await (route?.loadComponent as () => Promise<unknown>)();
+      expect(loaded).toBe(ReportBuilderComponent);
     });
   });
 });

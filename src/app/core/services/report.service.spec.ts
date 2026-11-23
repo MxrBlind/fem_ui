@@ -111,4 +111,57 @@ describe('ReportService', () => {
       expect(error.error.code).toBe(code);
     });
   });
+
+  describe('listSaved()', () => {
+    const listUrl = `${environment.apiBaseUrl}/api/report/saved`;
+
+    const savedReports: SavedReport[] = [
+      {
+        id: 2,
+        name: 'Alumnos activos',
+        description: 'Ciclo actual',
+        originalPrompt: 'alumnos activos',
+        createdDate: '2026-11-22T01:00:00',
+        lastRunDate: null
+      },
+      {
+        id: 1,
+        name: 'Maestros',
+        description: null,
+        originalPrompt: 'lista de maestros',
+        createdDate: '2026-11-20T10:00:00',
+        lastRunDate: '2026-11-21T09:30:00'
+      }
+    ];
+
+    it('sends one GET to /api/report/saved without body or params and emits the reports in order', async () => {
+      const promise = firstValueFrom(service.listSaved());
+
+      const req = http.expectOne(listUrl);
+      expect(req.request.method).toBe('GET');
+      expect(req.request.body).toBeNull();
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush(savedReports);
+
+      await expect(promise).resolves.toEqual(savedReports);
+    });
+
+    it('emits an empty array when the admin has no saved reports', async () => {
+      const promise = firstValueFrom(service.listSaved());
+
+      http.expectOne(listUrl).flush([]);
+
+      await expect(promise).resolves.toEqual([]);
+    });
+
+    it.each([401, 403, 500])('propagates the %i error unchanged', async (status) => {
+      const promise = firstValueFrom(service.listSaved());
+
+      http.expectOne(listUrl).flush({ status, message: 'boom' }, { status, statusText: 'Error' });
+
+      const error = (await promise.catch((e: unknown) => e)) as HttpErrorResponse;
+      expect(error).toBeInstanceOf(HttpErrorResponse);
+      expect(error.status).toBe(status);
+    });
+  });
 });

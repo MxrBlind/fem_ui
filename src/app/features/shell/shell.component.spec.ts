@@ -298,6 +298,16 @@ describe('ShellComponent', () => {
       expect(links.some((el) => (el.textContent ?? '').trim() === 'Reportes')).toBe(false);
     });
 
+    it('shows a "Guardados" link to /reportes/guardados right after "Generador" for admin', () => {
+      const fixture = setup(admin);
+      const links = Array.from(qAll(fixture, 'a[mat-list-item]')) as HTMLAnchorElement[];
+      const labels = links.map((el) => (el.textContent ?? '').trim());
+      const guardados = links.find((el) => (el.textContent ?? '').trim() === 'Guardados');
+      expect(guardados).toBeTruthy();
+      expect(guardados!.getAttribute('href')).toBe('/reportes/guardados');
+      expect(labels.indexOf('Guardados')).toBe(labels.indexOf('Generador') + 1);
+    });
+
     it.each([
       ['teacher', teacher],
       ['student', student],
@@ -305,7 +315,34 @@ describe('ShellComponent', () => {
       const fixture = setup(user);
       const links = Array.from(qAll(fixture, 'a[mat-list-item]')) as HTMLAnchorElement[];
       expect(links.some((el) => (el.textContent ?? '').trim() === 'Generador')).toBe(false);
+      expect(links.some((el) => (el.textContent ?? '').trim() === 'Guardados')).toBe(false);
       expect(textVisible(fixture, 'Reportes')).toBe(false);
+    });
+
+    describe('active state', () => {
+      async function activeLabelsAt(url: string): Promise<string[]> {
+        const fixture = setup(admin);
+        const router = TestBed.inject(Router);
+        router.resetConfig([
+          { path: 'reportes', children: [] },
+          { path: 'reportes/guardados', children: [] },
+        ]);
+        await router.navigateByUrl(url);
+        await fixture.whenStable();
+        fixture.detectChanges();
+        const links = Array.from(qAll(fixture, 'a[mat-list-item]')) as HTMLAnchorElement[];
+        return links
+          .filter((el) => el.classList.contains('active'))
+          .map((el) => (el.textContent ?? '').trim());
+      }
+
+      it('marks only "Generador" as active on /reportes', async () => {
+        expect(await activeLabelsAt('/reportes')).toEqual(['Generador']);
+      });
+
+      it('marks only "Guardados" as active on /reportes/guardados', async () => {
+        expect(await activeLabelsAt('/reportes/guardados')).toEqual(['Guardados']);
+      });
     });
   });
 

@@ -1,0 +1,43 @@
+:host {
+  display: block;
+  padding: 16px;
+  color: var(--mat-sys-on-surface);
+}
+
+.saved-reports__loading,
+.saved-reports__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+}
+
+.saved-reports__empty {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.saved-reports__heading {
+  margin: 0 0 16px;
+}
+
+.saved-reports__field {
+  width: 100%;
+  max-width: 480px;
+}
+
+.saved-reports__card {
+  display: block;
+  max-width: 480px;
+  padding: 16px;
+}
+
+.saved-reports__description {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.saved-reports__actions {
+  gap: 8px;
+}
