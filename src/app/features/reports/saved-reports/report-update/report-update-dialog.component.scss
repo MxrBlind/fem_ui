@@ -1,0 +1,22 @@
+:host {
+  display: block;
+  min-width: 380px;
+}
+
+.report-update__content {
+  display: block;
+  min-height: 4px;
+}
+
+.report-update__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.report-update__spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

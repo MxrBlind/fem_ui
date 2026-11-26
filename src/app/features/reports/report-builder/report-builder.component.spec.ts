@@ -575,6 +575,7 @@ describe('ReportBuilderComponent', () => {
         description: null,
         originalPrompt: 'alumnos con beca',
         createdDate: '2026-11-22T01:00:00',
+        updatedDate: null,
         lastRunDate: null
       };
 

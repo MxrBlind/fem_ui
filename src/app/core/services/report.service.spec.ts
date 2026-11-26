@@ -70,6 +70,7 @@ describe('ReportService', () => {
       description: null,
       originalPrompt: 'alumnos activos',
       createdDate: '2026-11-22T01:00:00',
+      updatedDate: null,
       lastRunDate: null
     };
 
@@ -122,6 +123,7 @@ describe('ReportService', () => {
         description: 'Ciclo actual',
         originalPrompt: 'alumnos activos',
         createdDate: '2026-11-22T01:00:00',
+        updatedDate: null,
         lastRunDate: null
       },
       {
@@ -130,6 +132,7 @@ describe('ReportService', () => {
         description: null,
         originalPrompt: 'lista de maestros',
         createdDate: '2026-11-20T10:00:00',
+        updatedDate: null,
         lastRunDate: '2026-11-21T09:30:00'
       }
     ];
@@ -242,6 +245,62 @@ describe('ReportService', () => {
       const promise = firstValueFrom(service.delete(7));
 
       http.expectOne(deleteUrl).flush({ status, code, message: 'boom' }, { status, statusText: 'Error' });
+
+      const error = (await promise.catch((e: unknown) => e)) as HttpErrorResponse;
+      expect(error).toBeInstanceOf(HttpErrorResponse);
+      expect(error.status).toBe(status);
+      expect(error.error.code).toBe(code);
+    });
+  });
+
+  describe('update()', () => {
+    const updateUrl = `${environment.apiBaseUrl}/api/report/saved/7`;
+
+    const updatedReport: SavedReport = {
+      id: 7,
+      name: 'Alumnos 2026',
+      description: null,
+      originalPrompt: 'alumnos activos',
+      createdDate: '2026-11-22T01:00:00',
+      updatedDate: '2026-11-26T10:30:00',
+      lastRunDate: null
+    };
+
+    it('sends one PUT to /api/report/saved/{id} with the request body and no params, and emits the updated report', async () => {
+      const promise = firstValueFrom(service.update(7, { name: 'Alumnos 2026', description: null }));
+
+      const req = http.expectOne(updateUrl);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toEqual({ name: 'Alumnos 2026', description: null });
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush(updatedReport);
+
+      const emitted = await promise;
+      expect(emitted).toEqual(updatedReport);
+      expect(emitted.updatedDate).toBe('2026-11-26T10:30:00');
+    });
+
+    it('sends the description when there is one', async () => {
+      const promise = firstValueFrom(service.update(7, { name: 'Alumnos 2026', description: 'Ciclo actual' }));
+
+      const req = http.expectOne(updateUrl);
+      expect(req.request.body).toEqual({ name: 'Alumnos 2026', description: 'Ciclo actual' });
+      req.flush({ ...updatedReport, description: 'Ciclo actual' });
+
+      await expect(promise).resolves.toEqual({ ...updatedReport, description: 'Ciclo actual' });
+    });
+
+    it.each([
+      [400, 'VALIDATION_FAILED'],
+      [401, 'UNAUTHORIZED'],
+      [403, 'ACCESS_DENIED'],
+      [404, 'ENTITY_NOT_FOUND'],
+      [409, 'REPORT_NAME_CONFLICT'],
+      [500, 'INTERNAL_ERROR']
+    ])('propagates the %i error unchanged', async (status, code) => {
+      const promise = firstValueFrom(service.update(7, { name: 'Alumnos 2026', description: null }));
+
+      http.expectOne(updateUrl).flush({ status, code, message: 'boom' }, { status, statusText: 'Error' });
 
       const error = (await promise.catch((e: unknown) => e)) as HttpErrorResponse;
       expect(error).toBeInstanceOf(HttpErrorResponse);

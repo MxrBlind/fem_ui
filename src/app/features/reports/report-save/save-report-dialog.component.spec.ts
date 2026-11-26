@@ -24,6 +24,7 @@ const savedReport: SavedReport = {
   description: null,
   originalPrompt: 'alumnos activos',
   createdDate: '2026-11-22T01:00:00',
+  updatedDate: null,
   lastRunDate: null
 };
 

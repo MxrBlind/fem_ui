@@ -46,7 +46,9 @@
               }
               {{ executing() ? 'Ejecutando…' : 'Ejecutar' }}
             </button>
-            <button mat-stroked-button type="button" data-testid="saved-report-update-btn">Actualizar</button>
+            <button mat-stroked-button type="button" data-testid="saved-report-update-btn" (click)="onUpdate()">
+              Actualizar
+            </button>
             <button
               mat-stroked-button
               class="danger-button"

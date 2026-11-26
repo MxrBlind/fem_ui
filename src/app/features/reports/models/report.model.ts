@@ -28,12 +28,22 @@ export interface SaveReportRequest {
   description?: string;
 }
 
-/** Saved report metadata returned by `POST /api/report/saved`. The SQL is never exposed. */
+/**
+ * Body of `PUT /api/report/saved/{id}`, a full replacement of name and description. A `null` description clears it.
+ */
+export interface UpdateSavedReportRequest {
+  name: string;
+  description: string | null;
+}
+
+/** Saved report metadata returned by the saved-reports endpoints. The SQL is never exposed. */
 export interface SavedReport {
   id: number;
   name: string;
   description: string | null;
   originalPrompt: string;
   createdDate: string;
+  /** `null` until the name or description is updated. */
+  updatedDate: string | null;
   lastRunDate: string | null;
 }

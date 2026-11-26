@@ -1,0 +1,75 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+
+<mat-dialog-content class="report-update__content">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="report-update__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Nombre</mat-label>
+      <input
+        matInput
+        type="text"
+        autocomplete="off"
+        formControlName="name"
+        required
+        [attr.maxlength]="nameMaxLength"
+        data-testid="report-update-name"
+      />
+      <mat-hint align="end" data-testid="report-update-name-counter">{{ nameLength() }} / {{ nameMaxLength }}</mat-hint>
+      @if (form.controls.name.hasError('required') || form.controls.name.hasError('blank')) {
+        <mat-error>El nombre es requerido.</mat-error>
+      } @else if (form.controls.name.hasError('maxlength')) {
+        <mat-error>El nombre no puede exceder {{ nameMaxLength }} caracteres.</mat-error>
+      } @else if (form.controls.name.hasError('server')) {
+        <mat-error>{{ form.controls.name.getError('server') }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Descripción</mat-label>
+      <textarea
+        matInput
+        rows="3"
+        formControlName="description"
+        [attr.maxlength]="descriptionMaxLength"
+        data-testid="report-update-description"
+      ></textarea>
+      <mat-hint align="end" data-testid="report-update-description-counter">
+        {{ descriptionLength() }} / {{ descriptionMaxLength }}
+      </mat-hint>
+      @if (form.controls.description.hasError('maxlength')) {
+        <mat-error>La descripción no puede exceder {{ descriptionMaxLength }} caracteres.</mat-error>
+      } @else if (form.controls.description.hasError('server')) {
+        <mat-error>{{ form.controls.description.getError('server') }}</mat-error>
+      }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button
+    mat-stroked-button
+    type="button"
+    data-testid="report-update-cancel"
+    (click)="cancel()"
+    [disabled]="saving()"
+  >
+    Cancelar
+  </button>
+  <button
+    mat-flat-button
+    color="primary"
+    type="button"
+    data-testid="report-update-submit"
+    (click)="onSubmit()"
+    [disabled]="form.invalid || saving() || !changed()"
+  >
+    @if (saving()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="18"
+        class="report-update__spinner"
+        aria-hidden="true"
+      />
+    }
+    Guardar
+  </button>
+</mat-dialog-actions>
