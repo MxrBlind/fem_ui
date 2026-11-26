@@ -215,4 +215,38 @@ describe('ReportService', () => {
       expect(error.error.code).toBe(code);
     });
   });
+
+  describe('delete()', () => {
+    const deleteUrl = `${environment.apiBaseUrl}/api/report/saved/7`;
+
+    it('sends one DELETE to /api/report/saved/{id} without body or params and completes with an empty body on 204', async () => {
+      const promise = firstValueFrom(service.delete(7));
+
+      const req = http.expectOne(deleteUrl);
+      expect(req.request.method).toBe('DELETE');
+      expect(req.request.body).toBeNull();
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush(null, { status: 204, statusText: 'No Content' });
+
+      // HttpClient emits `null` for an empty 204 body; callers ignore the value.
+      await expect(promise).resolves.toBeNull();
+    });
+
+    it.each([
+      [400, 'BAD_REQUEST'],
+      [401, 'UNAUTHORIZED'],
+      [403, 'ACCESS_DENIED'],
+      [404, 'ENTITY_NOT_FOUND'],
+      [500, 'INTERNAL_ERROR']
+    ])('propagates the %i error unchanged', async (status, code) => {
+      const promise = firstValueFrom(service.delete(7));
+
+      http.expectOne(deleteUrl).flush({ status, code, message: 'boom' }, { status, statusText: 'Error' });
+
+      const error = (await promise.catch((e: unknown) => e)) as HttpErrorResponse;
+      expect(error).toBeInstanceOf(HttpErrorResponse);
+      expect(error.status).toBe(status);
+      expect(error.error.code).toBe(code);
+    });
+  });
 });

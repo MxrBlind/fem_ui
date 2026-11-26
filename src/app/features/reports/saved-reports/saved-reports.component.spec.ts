@@ -7,9 +7,14 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 
+import { REPORT_DELETED_MESSAGE } from '@core/errors/error-messages';
 import { ReportService } from '@core/services/report.service';
 import { ExcelExportService } from '@shared/table-export';
 import { ReportResult, SavedReport } from '../models/report.model';
+import {
+  ReportDeleteConfirmComponent,
+  ReportDeleteConfirmResult
+} from './report-delete-confirm/report-delete-confirm.component';
 import { SavedReportsComponent } from './saved-reports.component';
 
 const LOAD_FAILED_MESSAGE = 'No se pudieron cargar los reportes guardados.';
@@ -70,6 +75,8 @@ interface Harness {
   listSaved: ReturnType<typeof vi.fn>;
   snackOpen: ReturnType<typeof vi.spyOn>;
   dialogOpen: ReturnType<typeof vi.spyOn>;
+  /** Emits what the opened confirmation dialog closes with (`undefined` when dismissed). */
+  dialogClosed: Subject<ReportDeleteConfirmResult | undefined>;
   navigate: ReturnType<typeof vi.spyOn>;
   navigateByUrl: ReturnType<typeof vi.spyOn>;
   /** Controls the request issued by the page on init. */
@@ -101,7 +108,10 @@ function setup(): Harness {
     ]
   });
   const snackOpen = vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
-  const dialogOpen = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue({} as never);
+  const dialogClosed = new Subject<ReportDeleteConfirmResult | undefined>();
+  const dialogOpen = vi
+    .spyOn(MatDialog.prototype, 'open')
+    .mockReturnValue({ afterClosed: () => dialogClosed.asObservable() } as never);
   const router = TestBed.inject(Router);
   const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
   const navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -115,6 +125,7 @@ function setup(): Harness {
     listSaved,
     snackOpen,
     dialogOpen,
+    dialogClosed,
     navigate,
     navigateByUrl,
     request,
@@ -383,10 +394,7 @@ describe('SavedReportsComponent', () => {
       ['Actualizar', 'saved-report-update-btn'],
       ['Borrar', 'saved-report-delete-btn']
     ] as const;
-    const inertButtonIds = [
-      ['Actualizar', 'saved-report-update-btn'],
-      ['Borrar', 'saved-report-delete-btn']
-    ] as const;
+    const inertButtonIds = [['Actualizar', 'saved-report-update-btn']] as const;
 
     it('shows no action button before a report is selected', () => {
       const h = setup();
@@ -441,6 +449,202 @@ describe('SavedReportsComponent', () => {
       expect(h.navigateByUrl).not.toHaveBeenCalled();
       expect(h.snackOpen).not.toHaveBeenCalled();
       expect(h.el.innerHTML).toBe(before);
+    });
+  });
+
+  describe('delete a saved report', () => {
+    async function ready(list: SavedReport[] = reports): Promise<Harness> {
+      const h = setup();
+      load(h, list);
+      await selectOption(h, 0);
+      return h;
+    }
+
+    function clickDelete(h: Harness): void {
+      (byTestId(h.el, 'saved-report-delete-btn') as HTMLButtonElement).click();
+      h.fixture.detectChanges();
+    }
+
+    /** Closes the confirmation dialog the way the real one does, then lets the view settle. */
+    async function closeDialog(h: Harness, result: ReportDeleteConfirmResult | undefined): Promise<void> {
+      h.dialogClosed.next(result);
+      h.dialogClosed.complete();
+      h.fixture.detectChanges();
+      await h.fixture.whenStable();
+      h.fixture.detectChanges();
+    }
+
+    const resultEl = (h: Harness): HTMLElement | null => byTestId(h.el, 'saved-report-result');
+
+    async function optionNames(h: Harness): Promise<string[]> {
+      return (await openPanel(h)).map((option) => text(option));
+    }
+
+    describe('opening the dialog', () => {
+      it('opens the confirmation dialog with the selected report and sends no request', async () => {
+        const h = await ready();
+
+        clickDelete(h);
+
+        expect(h.dialogOpen).toHaveBeenCalledTimes(1);
+        const [component, config] = h.dialogOpen.mock.calls[0];
+        expect(component).toBe(ReportDeleteConfirmComponent);
+        expect(config).toEqual(expect.objectContaining({ data: { report: reports[0] }, disableClose: true }));
+        expect(h.listSaved).toHaveBeenCalledTimes(1);
+        expect(h.execute).not.toHaveBeenCalled();
+        expect(h.snackOpen).not.toHaveBeenCalled();
+      });
+
+      it('changes nothing while the dialog is open', async () => {
+        const h = await ready();
+        clickRun(h);
+        h.runs[0].next(makeResult());
+        h.runs[0].complete();
+        await h.fixture.whenStable();
+        h.fixture.detectChanges();
+        const before = h.el.innerHTML;
+
+        clickDelete(h);
+
+        expect(h.el.innerHTML).toBe(before);
+      });
+
+      it('leaves the options, the selection, the details and the result unchanged when the dialog is dismissed', async () => {
+        const h = await ready();
+        clickRun(h);
+        h.runs[0].next(makeResult());
+        h.runs[0].complete();
+        await h.fixture.whenStable();
+        h.fixture.detectChanges();
+        clickDelete(h);
+        const before = h.el.innerHTML;
+
+        await closeDialog(h, undefined);
+
+        expect(h.el.innerHTML).toBe(before);
+        expect(h.fixture.componentInstance.reports()).toEqual(reports);
+        expect(h.fixture.componentInstance.selectedReportId()).toBe(11);
+        expect(resultEl(h)).not.toBeNull();
+        expect(h.snackOpen).not.toHaveBeenCalled();
+        expect(h.listSaved).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    describe('successful delete', () => {
+      it('removes the option, keeps the order of the others and selects nothing', async () => {
+        const h = await ready();
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+
+        expect(h.fixture.componentInstance.reports().map((report) => report.id)).toEqual([4, 7]);
+        expect(h.fixture.componentInstance.selectedReportId()).toBeNull();
+        expect(await optionNames(h)).toEqual(['Alfa maestros', 'Beta materias']);
+      });
+
+      it('hides the action buttons and the details', async () => {
+        const h = await ready();
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+
+        expect(byTestId(h.el, 'saved-report-actions')).toBeNull();
+        expect(byTestId(h.el, 'saved-report-details')).toBeNull();
+        expect(byTestId(h.el, 'saved-report-delete-btn')).toBeNull();
+      });
+
+      it('shows the success message and does not reload the list', async () => {
+        const h = await ready();
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+
+        expect(h.snackOpen).toHaveBeenCalledTimes(1);
+        expect(h.snackOpen).toHaveBeenCalledWith(REPORT_DELETED_MESSAGE, 'Cerrar', { duration: 3000 });
+        expect(h.listSaved).toHaveBeenCalledTimes(1);
+      });
+
+      it('removes the report that was selected when the dialog opened', async () => {
+        const h = await ready();
+        await selectOption(h, 2);
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+
+        expect(h.fixture.componentInstance.reports().map((report) => report.id)).toEqual([11, 4]);
+      });
+
+      it('shows the empty-list state when the last report is deleted', async () => {
+        const h = await ready([reports[0]]);
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+
+        expect(byTestId(h.el, 'saved-reports-empty')).not.toBeNull();
+        expect(text(byTestId(h.el, 'saved-reports-empty'))).toContain('No hay reportes guardados.');
+        expect(byTestId(h.el, 'saved-reports-select')).toBeNull();
+      });
+
+      it('moves focus to the dropdown when other reports remain', async () => {
+        const h = await ready();
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+
+        expect(document.activeElement).toBe(byTestId(h.el, 'saved-reports-select'));
+      });
+    });
+
+    describe('ownership of the result', () => {
+      it('removes the shown result of the deleted report', async () => {
+        const h = await ready();
+        clickRun(h);
+        h.runs[0].next(makeResult());
+        h.runs[0].complete();
+        await h.fixture.whenStable();
+        h.fixture.detectChanges();
+        expect(resultEl(h)).not.toBeNull();
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+
+        expect(resultEl(h)).toBeNull();
+      });
+
+      it('cancels a run in flight so its late response is never shown', async () => {
+        const h = await ready();
+        clickRun(h);
+        expect(h.runs[0].observed).toBe(true);
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'deleted' });
+        h.runs[0].next(makeResult());
+        h.runs[0].complete();
+        await h.fixture.whenStable();
+        h.fixture.detectChanges();
+
+        expect(h.runs[0].observed).toBe(false);
+        expect(h.fixture.componentInstance.executing()).toBe(false);
+        expect(resultEl(h)).toBeNull();
+      });
+    });
+
+    describe('report that no longer exists', () => {
+      it('removes it from the list and shows the not-found message', async () => {
+        const h = await ready();
+        clickDelete(h);
+
+        await closeDialog(h, { outcome: 'not-found' });
+
+        expect(h.fixture.componentInstance.reports().map((report) => report.id)).toEqual([4, 7]);
+        expect(h.fixture.componentInstance.selectedReportId()).toBeNull();
+        expect(h.snackOpen).toHaveBeenCalledTimes(1);
+        expect(h.snackOpen).toHaveBeenCalledWith(NOT_FOUND_MESSAGE, 'Cerrar', {
+          duration: 5000,
+          panelClass: 'snackbar-error'
+        });
+        expect(h.listSaved).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
