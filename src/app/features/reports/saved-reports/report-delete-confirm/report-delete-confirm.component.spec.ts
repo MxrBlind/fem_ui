@@ -248,6 +248,7 @@ describe('ReportDeleteConfirmComponent', () => {
       const spinner = button.querySelector('mat-progress-spinner');
       expect(button.disabled).toBe(true);
       expect(spinner).not.toBeNull();
+      expect(spinner?.classList).toContain('button-spinner');
       expect(spinner?.getAttribute('aria-hidden')).toBe('true');
       expect(button.textContent?.trim()).toBe('Sí');
     });

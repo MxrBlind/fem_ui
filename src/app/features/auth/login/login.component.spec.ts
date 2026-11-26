@@ -3,7 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
@@ -107,6 +107,23 @@ describe('LoginComponent', () => {
 
     expect(authSpy.login).toHaveBeenCalledWith({ username: 'alice', password: 'pass1' });
     expect(snackBarOpen).toHaveBeenCalledWith('Sesión iniciada', undefined, { duration: 2000 });
+  });
+
+  it('replaces the label with a plain spinner while submitting (no button-spinner, not aria-hidden)', () => {
+    authSpy.login.mockReturnValue(new Subject());
+
+    setValue('username', 'alice');
+    setValue('password', 'pass1');
+    (fixture.componentInstance as unknown as { onSubmit(): void }).onSubmit();
+    fixture.detectChanges();
+
+    const submitBtn = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const spinner = submitBtn.querySelector('mat-progress-spinner');
+    expect(submitBtn.disabled).toBe(true);
+    expect(spinner).not.toBeNull();
+    expect(spinner?.classList).not.toContain('button-spinner');
+    expect(spinner?.getAttribute('aria-hidden')).toBeNull();
+    expect(submitBtn.textContent).not.toContain('Entrar');
   });
 
   it('on 401 shows error snackbar, clears password, preserves username', async () => {
