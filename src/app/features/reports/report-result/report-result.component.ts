@@ -102,6 +102,9 @@ export class ReportResultComponent {
 
   readonly result = input.required<ReportResult>();
 
+  /** Turn off the "Se interpretó como" line when the interpretation is already shown elsewhere. */
+  readonly showInterpretation = input(true);
+
   /** Emits the saved report so a saved-reports list can refresh. */
   readonly reportSaved = output<SavedReport>();
   /** The report token expired; the owner should generate the same report again. */

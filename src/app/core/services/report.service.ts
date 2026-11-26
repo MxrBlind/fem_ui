@@ -23,4 +23,12 @@ export class ReportService {
   listSaved(): Observable<SavedReport[]> {
     return this.http.get<SavedReport[]>(`${this.baseUrl}/saved`);
   }
+
+  /**
+   * Runs a saved report against current data. The backend keeps the SQL, so it is never sent or received.
+   * The result has no save token and its `interpretation` is the stored description.
+   */
+  execute(id: number): Observable<ReportResult> {
+    return this.http.post<ReportResult>(`${this.baseUrl}/saved/${id}/execute`, null);
+  }
 }

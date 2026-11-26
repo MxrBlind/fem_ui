@@ -1,7 +1,9 @@
 <section class="report-result">
-  <p class="report-result__interpretation mat-body-large" data-testid="report-interpretation">
-    Se interpretó como: {{ result().interpretation }}
-  </p>
+  @if (showInterpretation() && result().interpretation?.trim()) {
+    <p class="report-result__interpretation mat-body-large" data-testid="report-interpretation">
+      Se interpretó como: {{ result().interpretation }}
+    </p>
+  }
 
   <mat-card class="report-result__card">
     @if (isEmpty()) {
