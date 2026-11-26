@@ -164,4 +164,55 @@ describe('ReportService', () => {
       expect(error.status).toBe(status);
     });
   });
+
+  describe('execute()', () => {
+    const executeUrl = `${environment.apiBaseUrl}/api/report/saved/7/execute`;
+
+    const savedRunResult: ReportResult = {
+      ...result,
+      reportToken: null,
+      interpretation: null
+    };
+
+    it('sends one POST to /api/report/saved/{id}/execute without body or params and emits the result unchanged', async () => {
+      const promise = firstValueFrom(service.execute(7));
+
+      const req = http.expectOne(executeUrl);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toBeNull();
+      expect(req.request.params.keys()).toEqual([]);
+      req.flush(savedRunResult);
+
+      const emitted = await promise;
+      expect(emitted).toEqual(savedRunResult);
+      expect(emitted.reportToken).toBeNull();
+      expect(emitted.interpretation).toBeNull();
+    });
+
+    it('emits the stored description carried in the interpretation', async () => {
+      const promise = firstValueFrom(service.execute(7));
+
+      http.expectOne(executeUrl).flush({ ...savedRunResult, interpretation: 'Ciclo actual' });
+
+      await expect(promise).resolves.toEqual({ ...savedRunResult, interpretation: 'Ciclo actual' });
+    });
+
+    it.each([
+      [400, 'BAD_REQUEST'],
+      [401, 'UNAUTHORIZED'],
+      [403, 'ACCESS_DENIED'],
+      [404, 'ENTITY_NOT_FOUND'],
+      [422, 'REPORT_EXECUTION_FAILED'],
+      [500, 'INTERNAL_ERROR']
+    ])('propagates the %i error unchanged', async (status, code) => {
+      const promise = firstValueFrom(service.execute(7));
+
+      http.expectOne(executeUrl).flush({ status, code, message: 'boom' }, { status, statusText: 'Error' });
+
+      const error = (await promise.catch((e: unknown) => e)) as HttpErrorResponse;
+      expect(error).toBeInstanceOf(HttpErrorResponse);
+      expect(error.status).toBe(status);
+      expect(error.error.code).toBe(code);
+    });
+  });
 });

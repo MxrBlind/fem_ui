@@ -7,10 +7,14 @@ export interface ReportColumn {
 
 export type ReportCellValue = string | number | boolean | null;
 
-/** Result of `POST /api/report/generate`. Each row holds its cell values in column order. */
+/**
+ * Result of `POST /api/report/generate` or `POST /api/report/saved/{id}/execute`. Each row holds its cell values
+ * in column order. A saved-report run has no save token and carries the stored description (or `null`) as
+ * its interpretation.
+ */
 export interface ReportResult {
   reportToken: string | null;
-  interpretation: string;
+  interpretation: string | null;
   columns: ReportColumn[];
   rows: ReportCellValue[][];
   rowCount: number;

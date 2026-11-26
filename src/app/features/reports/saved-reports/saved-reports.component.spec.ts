@@ -8,10 +8,34 @@ import { Router, provideRouter } from '@angular/router';
 import { Subject } from 'rxjs';
 
 import { ReportService } from '@core/services/report.service';
-import { SavedReport } from '../models/report.model';
+import { ExcelExportService } from '@shared/table-export';
+import { ReportResult, SavedReport } from '../models/report.model';
 import { SavedReportsComponent } from './saved-reports.component';
 
 const LOAD_FAILED_MESSAGE = 'No se pudieron cargar los reportes guardados.';
+const RUN_FAILED_MESSAGE = 'No se pudo ejecutar el reporte. Inténtalo de nuevo más tarde.';
+const EXECUTION_FAILED_MESSAGE =
+  'No se pudo ejecutar el reporte guardado. Es posible que ya no sea válido con los datos actuales.';
+const NOT_FOUND_MESSAGE = 'No se encontró el registro.';
+
+function makeResult(overrides: Partial<ReportResult> = {}): ReportResult {
+  return {
+    reportToken: null,
+    interpretation: 'Ciclo actual',
+    columns: [
+      { name: 'name', label: 'Nombre', type: 'VARCHAR' },
+      { name: 'start_date', label: 'Inicio', type: 'DATE' }
+    ],
+    rows: [
+      ['Ana', '2024-01-05'],
+      ['Beto', '2024-02-01'],
+      ['Carla', '2024-03-09']
+    ],
+    rowCount: 3,
+    executionMs: 8,
+    ...overrides
+  };
+}
 
 const reports: SavedReport[] = [
   {
@@ -50,15 +74,31 @@ interface Harness {
   navigateByUrl: ReturnType<typeof vi.spyOn>;
   /** Controls the request issued by the page on init. */
   request: Subject<SavedReport[]>;
+  execute: ReturnType<typeof vi.fn>;
+  /** One subject per `execute` call, in call order. */
+  runs: Subject<ReportResult>[];
+  exportToExcel: ReturnType<typeof vi.fn>;
 }
 
 function setup(): Harness {
   const request = new Subject<SavedReport[]>();
   const listSaved = vi.fn(() => request.asObservable());
+  const runs: Subject<ReportResult>[] = [];
+  const execute = vi.fn(() => {
+    const run = new Subject<ReportResult>();
+    runs.push(run);
+    return run.asObservable();
+  });
+  const exportToExcel = vi.fn().mockResolvedValue(undefined);
 
   TestBed.configureTestingModule({
     imports: [SavedReportsComponent],
-    providers: [provideAnimationsAsync(), provideRouter([]), { provide: ReportService, useValue: { listSaved } }]
+    providers: [
+      provideAnimationsAsync(),
+      provideRouter([]),
+      { provide: ReportService, useValue: { listSaved, execute } },
+      { provide: ExcelExportService, useValue: { exportToExcel } }
+    ]
   });
   const snackOpen = vi.spyOn(MatSnackBar.prototype, 'open').mockReturnValue({} as never);
   const dialogOpen = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue({} as never);
@@ -77,7 +117,10 @@ function setup(): Harness {
     dialogOpen,
     navigate,
     navigateByUrl,
-    request
+    request,
+    execute,
+    runs,
+    exportToExcel
   };
 }
 
@@ -93,6 +136,22 @@ function load(h: Harness, value: SavedReport[] = reports): void {
 
 function fail(h: Harness, status: number, body: unknown = null): void {
   h.request.error(new HttpErrorResponse({ status, error: body }));
+  h.fixture.detectChanges();
+}
+
+function succeedRun(h: Harness, run: number, result: ReportResult = makeResult()): void {
+  h.runs[run].next(result);
+  h.runs[run].complete();
+  h.fixture.detectChanges();
+}
+
+function failRun(h: Harness, run: number, status: number, body: unknown = null): void {
+  h.runs[run].error(new HttpErrorResponse({ status, error: body }));
+  h.fixture.detectChanges();
+}
+
+function clickRun(h: Harness): void {
+  (byTestId(h.el, 'saved-report-run-btn') as HTMLButtonElement).click();
   h.fixture.detectChanges();
 }
 
@@ -318,9 +377,13 @@ describe('SavedReportsComponent', () => {
     });
   });
 
-  describe('placeholder action buttons', () => {
+  describe('action buttons', () => {
     const buttonIds = [
       ['Ejecutar', 'saved-report-run-btn'],
+      ['Actualizar', 'saved-report-update-btn'],
+      ['Borrar', 'saved-report-delete-btn']
+    ] as const;
+    const inertButtonIds = [
       ['Actualizar', 'saved-report-update-btn'],
       ['Borrar', 'saved-report-delete-btn']
     ] as const;
@@ -362,7 +425,7 @@ describe('SavedReportsComponent', () => {
       }
     });
 
-    it.each(buttonIds)('does nothing when "%s" is clicked', async (_label, id) => {
+    it.each(inertButtonIds)('does nothing when "%s" is clicked', async (_label, id) => {
       const h = setup();
       load(h);
       await selectOption(h, 0);
@@ -372,11 +435,401 @@ describe('SavedReportsComponent', () => {
       h.fixture.detectChanges();
 
       expect(h.listSaved).toHaveBeenCalledTimes(1);
+      expect(h.execute).not.toHaveBeenCalled();
       expect(h.dialogOpen).not.toHaveBeenCalled();
       expect(h.navigate).not.toHaveBeenCalled();
       expect(h.navigateByUrl).not.toHaveBeenCalled();
       expect(h.snackOpen).not.toHaveBeenCalled();
       expect(h.el.innerHTML).toBe(before);
+    });
+  });
+
+  describe('execute a saved report', () => {
+    async function ready(): Promise<Harness> {
+      const h = setup();
+      load(h);
+      await selectOption(h, 0);
+      return h;
+    }
+
+    async function settleView(h: Harness): Promise<void> {
+      await h.fixture.whenStable();
+      h.fixture.detectChanges();
+    }
+
+    const resultEl = (h: Harness): HTMLElement | null => byTestId(h.el, 'saved-report-result');
+
+    describe('request', () => {
+      it('sends nothing before the click or on selection', async () => {
+        const h = await ready();
+
+        expect(h.execute).not.toHaveBeenCalled();
+      });
+
+      it('runs the selected report exactly once when "Ejecutar" is clicked', async () => {
+        const h = await ready();
+
+        clickRun(h);
+
+        expect(h.execute).toHaveBeenCalledTimes(1);
+        expect(h.execute).toHaveBeenCalledWith(11);
+      });
+
+      it('runs the report that is currently selected', async () => {
+        const h = await ready();
+        await selectOption(h, 1);
+
+        clickRun(h);
+
+        expect(h.execute).toHaveBeenCalledWith(4);
+      });
+
+      it('sends a new request on every click once the previous run ended and replaces the result', async () => {
+        const h = await ready();
+
+        clickRun(h);
+        succeedRun(h, 0, makeResult({ rows: [['Ana', '2024-01-05']], rowCount: 1 }));
+        clickRun(h);
+        succeedRun(h, 1, makeResult({ rows: [['Zoe', '2024-05-05']], rowCount: 1 }));
+        await settleView(h);
+
+        expect(h.execute).toHaveBeenCalledTimes(2);
+        expect(text(resultEl(h)?.querySelector('td[mat-cell]') as HTMLElement | null)).toBe('Zoe');
+      });
+    });
+
+    describe('running state', () => {
+      it('disables "Ejecutar" and shows an inline spinner next to "Ejecutando…" while pending', async () => {
+        const h = await ready();
+
+        clickRun(h);
+
+        const button = byTestId(h.el, 'saved-report-run-btn') as HTMLButtonElement;
+        expect(button.disabled).toBe(true);
+        expect(text(button)).toBe('Ejecutando…');
+        const spinner = button.querySelector('mat-progress-spinner') as HTMLElement;
+        expect(spinner).not.toBeNull();
+        expect(spinner.getAttribute('aria-hidden')).toBe('true');
+      });
+
+      it('does not send a second request while the first is pending', async () => {
+        const h = await ready();
+
+        clickRun(h);
+        (byTestId(h.el, 'saved-report-run-btn') as HTMLButtonElement).click();
+        h.fixture.componentInstance.onRun();
+        h.fixture.detectChanges();
+
+        expect(h.execute).toHaveBeenCalledTimes(1);
+      });
+
+      it('keeps "Actualizar" and "Borrar" enabled and unchanged while running', async () => {
+        const h = await ready();
+
+        clickRun(h);
+
+        for (const [label, id] of [
+          ['Actualizar', 'saved-report-update-btn'],
+          ['Borrar', 'saved-report-delete-btn']
+        ]) {
+          const button = byTestId(h.el, id) as HTMLButtonElement;
+          expect(button.disabled).toBe(false);
+          expect(text(button)).toBe(label);
+          expect(button.querySelector('mat-progress-spinner')).toBeNull();
+        }
+      });
+
+      it.each([
+        ['succeeds', (h: Harness) => succeedRun(h, 0)],
+        ['fails', (h: Harness) => failRun(h, 0, 500)]
+      ])('restores the normal "Ejecutar" button when the run %s', async (_label, finish) => {
+        const h = await ready();
+        clickRun(h);
+
+        finish(h);
+
+        const button = byTestId(h.el, 'saved-report-run-btn') as HTMLButtonElement;
+        expect(button.disabled).toBe(false);
+        expect(text(button)).toBe('Ejecutar');
+        expect(button.querySelector('mat-progress-spinner')).toBeNull();
+      });
+    });
+
+    describe('result', () => {
+      it('shows no result before the first run', async () => {
+        const h = await ready();
+
+        expect(resultEl(h)).toBeNull();
+      });
+
+      it('renders the result view below the card, outside it, with the columns and rows', async () => {
+        const h = await ready();
+        clickRun(h);
+
+        succeedRun(h, 0);
+        await settleView(h);
+
+        const result = resultEl(h) as HTMLElement;
+        const card = byTestId(h.el, 'saved-report-card') as HTMLElement;
+        expect(result).not.toBeNull();
+        expect(result.tagName.toLowerCase()).toBe('app-report-result');
+        expect(card.contains(result)).toBe(false);
+        expect(Boolean(card.compareDocumentPosition(result) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+        expect(Array.from(result.querySelectorAll('th[mat-header-cell]')).map((th) => text(th as HTMLElement))).toEqual([
+          'Nombre',
+          'Inicio'
+        ]);
+        expect(result.querySelectorAll('tr[mat-row]')).toHaveLength(3);
+      });
+
+      it('keeps the dropdown and the report details when the result appears', async () => {
+        const h = await ready();
+        clickRun(h);
+
+        succeedRun(h, 0);
+        await settleView(h);
+
+        expect(text(byTestId(h.el, 'saved-report-name'))).toBe('Zeta alumnos');
+        expect(text(byTestId(h.el, 'saved-report-description'))).toBe('Ciclo actual');
+        expect(byTestId(h.el, 'saved-reports-select')).not.toBeNull();
+        expect(text(byTestId(h.el, 'saved-report-run-btn'))).toBe('Ejecutar');
+      });
+
+      it('offers the filter, the paginator, the row count and the export button', async () => {
+        const h = await ready();
+        clickRun(h);
+
+        succeedRun(h, 0);
+        await settleView(h);
+
+        const result = resultEl(h) as HTMLElement;
+        expect(result.querySelector('[data-testid="report-filter"]')).not.toBeNull();
+        expect(result.querySelector('mat-paginator')).not.toBeNull();
+        expect(result.querySelector('[data-testid="report-export-btn"]')).not.toBeNull();
+        expect(text(result.querySelector('[data-testid="report-row-count"]') as HTMLElement)).toBe('3 filas');
+      });
+
+      it('never offers "Guardar reporte", because a saved report has no save token', async () => {
+        const h = await ready();
+        clickRun(h);
+
+        succeedRun(h, 0);
+        await settleView(h);
+
+        expect(h.el.querySelector('[data-testid="report-save-btn"]')).toBeNull();
+        expect(h.el.textContent).not.toContain('Guardar reporte');
+      });
+
+      it.each([
+        ['a non-blank', 'Ciclo actual'],
+        ['a null', null]
+      ])('never shows the interpretation line with %s interpretation', async (_label, interpretation) => {
+        const h = await ready();
+        clickRun(h);
+
+        succeedRun(h, 0, makeResult({ interpretation }));
+        await settleView(h);
+
+        expect(h.el.querySelector('[data-testid="report-interpretation"]')).toBeNull();
+        expect(h.el.textContent).not.toContain('Se interpretó como');
+      });
+
+      it('shows the empty message and no export button when the report has no rows', async () => {
+        const h = await ready();
+        clickRun(h);
+
+        succeedRun(h, 0, makeResult({ rows: [], rowCount: 0 }));
+        await settleView(h);
+
+        const result = resultEl(h) as HTMLElement;
+        expect(text(result.querySelector('[data-testid="report-empty"]') as HTMLElement)).toContain(
+          'El reporte no devolvió resultados.'
+        );
+        expect(result.querySelector('[data-testid="report-export-btn"]')).toBeNull();
+      });
+
+      it('never shows SQL even if the response carried an extra sql field', async () => {
+        const h = await ready();
+        clickRun(h);
+
+        succeedRun(h, 0, { ...makeResult(), sql: 'SELECT * FROM student' } as unknown as ReportResult);
+        await settleView(h);
+
+        expect(h.el.textContent).not.toContain('SELECT');
+      });
+    });
+
+    describe('Excel export', () => {
+      it('exports the filtered rows with the table headers', async () => {
+        const h = await ready();
+        clickRun(h);
+        succeedRun(h, 0);
+        await settleView(h);
+
+        const filter = h.el.querySelector('[data-testid="report-filter"]') as HTMLInputElement;
+        filter.value = 'an';
+        filter.dispatchEvent(new Event('input'));
+        h.fixture.detectChanges();
+        h.fixture.detectChanges();
+        (h.el.querySelector('[data-testid="export-to-excel-btn"]') as HTMLButtonElement).click();
+        await h.fixture.whenStable();
+
+        expect(h.exportToExcel).toHaveBeenCalledTimes(1);
+        const config = h.exportToExcel.mock.calls[0][0];
+        expect(config.entitySlug).toBe('reporte');
+        expect(config.columns.map((c: { header: string }) => c.header)).toEqual(['Nombre', 'Inicio']);
+        expect(config.rows).toHaveLength(1);
+        expect(config.columns.map((c: { value: (row: unknown) => unknown }) => c.value(config.rows[0]))).toEqual([
+          'Ana',
+          new Date(Date.UTC(2024, 0, 5))
+        ]);
+      });
+    });
+
+    describe('ownership of the result', () => {
+      it('removes the result when another report is selected', async () => {
+        const h = await ready();
+        clickRun(h);
+        succeedRun(h, 0);
+        await settleView(h);
+        expect(resultEl(h)).not.toBeNull();
+
+        await selectOption(h, 1);
+
+        expect(resultEl(h)).toBeNull();
+      });
+
+      it('cancels the pending request and enables "Ejecutar" for the newly selected report', async () => {
+        const h = await ready();
+        clickRun(h);
+        expect(h.runs[0].observed).toBe(true);
+
+        await selectOption(h, 1);
+
+        expect(h.runs[0].observed).toBe(false);
+        const button = byTestId(h.el, 'saved-report-run-btn') as HTMLButtonElement;
+        expect(button.disabled).toBe(false);
+        expect(text(button)).toBe('Ejecutar');
+      });
+
+      it('never renders a response that would arrive after the selection changed', async () => {
+        const h = await ready();
+        clickRun(h);
+        await selectOption(h, 1);
+
+        succeedRun(h, 0);
+        await settleView(h);
+
+        expect(resultEl(h)).toBeNull();
+        expect(text(byTestId(h.el, 'saved-report-name'))).toBe('Alfa maestros');
+      });
+
+      it('runs the newly selected report after changing the selection during a run', async () => {
+        const h = await ready();
+        clickRun(h);
+        await selectOption(h, 1);
+
+        clickRun(h);
+
+        expect(h.execute).toHaveBeenCalledTimes(2);
+        expect(h.execute).toHaveBeenLastCalledWith(4);
+      });
+
+      it('keeps the result when the already selected report is selected again', async () => {
+        const h = await ready();
+        clickRun(h);
+        succeedRun(h, 0);
+        await settleView(h);
+
+        h.fixture.componentInstance.onSelect(11);
+        h.fixture.detectChanges();
+
+        expect(resultEl(h)).not.toBeNull();
+      });
+    });
+
+    describe('failures', () => {
+      it.each([
+        ['404', 404, null, NOT_FOUND_MESSAGE],
+        ['422 REPORT_EXECUTION_FAILED', 422, { code: 'REPORT_EXECUTION_FAILED' }, EXECUTION_FAILED_MESSAGE],
+        ['422 with another code', 422, { code: 'OTHER' }, RUN_FAILED_MESSAGE],
+        ['400', 400, { code: 'BAD_REQUEST' }, RUN_FAILED_MESSAGE],
+        ['500', 500, null, RUN_FAILED_MESSAGE],
+        ['a network error', 0, null, RUN_FAILED_MESSAGE]
+      ])('shows one error snackbar for %s', async (_label, status, body, message) => {
+        const h = await ready();
+        clickRun(h);
+
+        failRun(h, 0, status, body);
+
+        expect(h.snackOpen).toHaveBeenCalledTimes(1);
+        expect(h.snackOpen).toHaveBeenCalledWith(
+          message,
+          'Cerrar',
+          expect.objectContaining({ duration: 5000, panelClass: 'snackbar-error' })
+        );
+        expect(resultEl(h)).toBeNull();
+      });
+
+      it.each([401, 403])('shows no snackbar of its own for %i', async (status) => {
+        const h = await ready();
+        clickRun(h);
+
+        failRun(h, 0, status);
+
+        expect(h.snackOpen).not.toHaveBeenCalled();
+        expect((byTestId(h.el, 'saved-report-run-btn') as HTMLButtonElement).disabled).toBe(false);
+      });
+
+      it('keeps "Ejecutar" usable after a failure', async () => {
+        const h = await ready();
+        clickRun(h);
+        failRun(h, 0, 500);
+
+        clickRun(h);
+
+        expect(h.execute).toHaveBeenCalledTimes(2);
+      });
+
+      it('never shows the server message', async () => {
+        const h = await ready();
+        clickRun(h);
+
+        failRun(h, 0, 422, { code: 'REPORT_EXECUTION_FAILED', message: 'column secret_col not found' });
+
+        expect(h.el.textContent).not.toContain('secret_col');
+        expect(JSON.stringify(h.snackOpen.mock.calls)).not.toContain('secret_col');
+      });
+
+      it('logs only the status, never the response body', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const h = await ready();
+        clickRun(h);
+
+        failRun(h, 0, 422, {
+          code: 'REPORT_EXECUTION_FAILED',
+          message: 'column secret_col not found',
+          sql: 'select 1'
+        });
+
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledWith('[SavedReports] failed to run saved report', 422);
+      });
+
+      it('keeps the previous result of the same report after a failed run', async () => {
+        const h = await ready();
+        clickRun(h);
+        succeedRun(h, 0);
+        await settleView(h);
+
+        clickRun(h);
+        failRun(h, 1, 500);
+        await settleView(h);
+
+        expect(resultEl(h)).not.toBeNull();
+        expect(resultEl(h)?.querySelectorAll('tr[mat-row]')).toHaveLength(3);
+        expect(h.snackOpen).toHaveBeenCalledTimes(1);
+      });
     });
   });
 

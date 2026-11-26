@@ -21,6 +21,14 @@ export const REPORT_NAME_CONFLICT_MESSAGE = 'Ya existe un reporte con ese nombre
 export const REPORT_TOKEN_EXPIRED_MESSAGE = 'El reporte expiró, genera el reporte de nuevo para guardarlo';
 export const REPORT_SAVE_FAILED_MESSAGE = 'No se pudo guardar el reporte. Inténtalo de nuevo más tarde.';
 
+/**
+ * Messages of running a saved report. They are not in `CODE_MESSAGES` because `REPORT_EXECUTION_FAILED` asks
+ * the admin to rephrase a request, which a saved report does not have.
+ */
+export const SAVED_REPORT_EXECUTION_FAILED_MESSAGE =
+  'No se pudo ejecutar el reporte guardado. Es posible que ya no sea válido con los datos actuales.';
+export const SAVED_REPORT_RUN_FAILED_MESSAGE = 'No se pudo ejecutar el reporte. Inténtalo de nuevo más tarde.';
+
 const CODE_MESSAGES:ReadonlyMap<string, string> = new Map([
   ['ACCESS_DENIED', NOT_ALLOWED_MESSAGE],
   ['ENTITY_NOT_FOUND', NOT_FOUND_MESSAGE],

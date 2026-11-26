@@ -29,7 +29,23 @@
 
         @if (selectedReport(); as report) {
           <div class="saved-reports__actions" data-testid="saved-report-actions">
-            <button mat-flat-button type="button" data-testid="saved-report-run-btn">Ejecutar</button>
+            <button
+              mat-flat-button
+              type="button"
+              data-testid="saved-report-run-btn"
+              [disabled]="executing()"
+              (click)="onRun()"
+            >
+              @if (executing()) {
+                <mat-progress-spinner
+                  mode="indeterminate"
+                  diameter="18"
+                  class="saved-reports__spinner"
+                  aria-hidden="true"
+                />
+              }
+              {{ executing() ? 'Ejecutando…' : 'Ejecutar' }}
+            </button>
             <button mat-stroked-button type="button" data-testid="saved-report-update-btn">Actualizar</button>
             <button mat-stroked-button class="danger-button" type="button" data-testid="saved-report-delete-btn">
               Borrar
@@ -45,5 +61,14 @@
         }
       </mat-card-content>
     </mat-card>
+
+    @if (result(); as report) {
+      <app-report-result
+        class="saved-reports__result"
+        data-testid="saved-report-result"
+        [result]="report"
+        [showInterpretation]="false"
+      />
+    }
   }
 </section>

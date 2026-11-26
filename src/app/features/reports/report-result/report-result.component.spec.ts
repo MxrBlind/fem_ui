@@ -18,7 +18,7 @@ import { ReportResultComponent } from './report-result.component';
 function makeResult(
   columns: ReportColumn[],
   rows: ReportCellValue[][],
-  interpretation = 'Alumnos inscritos'
+  interpretation: string | null = 'Alumnos inscritos'
 ): ReportResult {
   return { reportToken: null, interpretation, columns, rows, rowCount: rows.length, executionMs: 5 };
 }
@@ -140,6 +140,52 @@ describe('ReportResultComponent', () => {
       const line = el(fixture).querySelector('[data-testid="report-interpretation"]') as HTMLElement;
       expect(line.textContent?.trim()).toBe('Se interpretó como: Alumnos con <b>beca</b>');
       expect(line.querySelector('b')).toBeNull();
+    });
+
+    describe('optional interpretation line', () => {
+      function interpretationLine(fixture: ComponentFixture<ReportResultComponent>): HTMLElement | null {
+        return el(fixture).querySelector('[data-testid="report-interpretation"]');
+      }
+
+      it.each([[null], [''], ['   ']])('does not render the line for the interpretation %j', (interpretation) => {
+        const fixture = setup(makeResult(textColumns(1), [['x']], interpretation));
+
+        expect(interpretationLine(fixture)).toBeNull();
+        expect(el(fixture).textContent).not.toContain('Se interpretó como');
+      });
+
+      it('does not render the line when showInterpretation is false, even with a non-blank interpretation', () => {
+        TestBed.configureTestingModule({
+          imports: [ReportResultComponent],
+          providers: [provideAnimationsAsync()]
+        });
+        const fixture = TestBed.createComponent(ReportResultComponent);
+        fixture.componentRef.setInput('result', makeResult(textColumns(1), [['x']], 'Ciclo actual'));
+        fixture.componentRef.setInput('showInterpretation', false);
+        fixture.detectChanges();
+        fixture.detectChanges();
+
+        expect(interpretationLine(fixture)).toBeNull();
+        expect(el(fixture).textContent).not.toContain('Se interpretó como');
+        expect(headers(fixture)).toEqual(['Col 0']);
+        expect(bodyRows(fixture)).toEqual([['x']]);
+      });
+
+      it('shows the line by default so the report builder keeps it', () => {
+        const fixture = setup(makeResult(textColumns(1), [['x']], 'Alumnos inscritos'));
+
+        expect(interpretationLine(fixture)?.textContent?.trim()).toBe('Se interpretó como: Alumnos inscritos');
+      });
+
+      it('still renders the table, filter, paginator and export button when the interpretation is null', () => {
+        const fixture = setup(makeResult(textColumns(2), [['a', 'b']], null));
+
+        expect(headers(fixture)).toEqual(['Col 0', 'Col 1']);
+        expect(bodyRows(fixture)).toEqual([['a', 'b']]);
+        expect(el(fixture).querySelector('[data-testid="report-filter"]')).not.toBeNull();
+        expect(el(fixture).querySelector('mat-paginator')).not.toBeNull();
+        expect(el(fixture).querySelector('[data-testid="report-export-btn"]')).not.toBeNull();
+      });
     });
 
     it('renders backend cell text as plain text', () => {
