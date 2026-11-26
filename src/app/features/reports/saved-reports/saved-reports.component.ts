@@ -25,6 +25,7 @@ import { parseApiError } from '@core/errors/api-error';
 import {
   NOT_FOUND_MESSAGE,
   REPORT_DELETED_MESSAGE,
+  REPORT_UPDATED_MESSAGE,
   SAVED_REPORT_EXECUTION_FAILED_MESSAGE,
   SAVED_REPORT_RUN_FAILED_MESSAGE,
 } from '@core/errors/error-messages';
@@ -36,6 +37,11 @@ import {
   ReportDeleteConfirmData,
   ReportDeleteConfirmResult,
 } from './report-delete-confirm/report-delete-confirm.component';
+import {
+  ReportUpdateDialogComponent,
+  ReportUpdateDialogData,
+  ReportUpdateDialogResult,
+} from './report-update/report-update-dialog.component';
 
 export const SAVED_REPORTS_LOAD_FAILED_MESSAGE = 'No se pudieron cargar los reportes guardados.';
 export const NO_SAVED_REPORTS_MESSAGE = 'No hay reportes guardados.';
@@ -147,6 +153,45 @@ export class SavedReportsComponent implements OnInit {
       .subscribe((outcome) => this.handleDeleteOutcome(report.id, outcome));
   }
 
+  /** Opens the edit dialog; it makes the request itself and reports how it ended. */
+  onUpdate(): void {
+    const report = this.selectedReport();
+    if (report === null) return;
+
+    this.dialog
+      .open<ReportUpdateDialogComponent, ReportUpdateDialogData, ReportUpdateDialogResult>(
+        ReportUpdateDialogComponent,
+        { data: { report }, disableClose: true }
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((outcome) => this.handleUpdateOutcome(report.id, outcome));
+  }
+
+  /** `undefined` means the dialog was dismissed, so nothing changes. */
+  private handleUpdateOutcome(reportId: number, outcome: ReportUpdateDialogResult | undefined): void {
+    if (outcome === undefined) return;
+
+    if (outcome.outcome === 'updated') {
+      this.replaceReport(outcome.report);
+      this.snackBar.open(REPORT_UPDATED_MESSAGE, 'Cerrar', { duration: 3000 });
+      return;
+    }
+    // `not-found`: the report is already gone from the server, so it leaves the list too.
+    this.removeReport(reportId);
+    this.snackBar.open(NOT_FOUND_MESSAGE, 'Cerrar', { duration: 5000, panelClass: 'snackbar-error' });
+  }
+
+  /**
+   * Only the name and description changed, so the selection, the shown result and a run in flight are kept. The list
+   * is re-sorted locally to match the order the backend would return, which avoids a refetch.
+   */
+  private replaceReport(updated: SavedReport): void {
+    this.reports.update((reports) =>
+      reports.map((report) => (report.id === updated.id ? updated : report)).sort(compareByName)
+    );
+  }
+
   /** `undefined` means the dialog was dismissed, so nothing changes. */
   private handleDeleteOutcome(reportId: number, outcome: ReportDeleteConfirmResult | undefined): void {
     if (outcome === undefined) return;
@@ -203,6 +248,11 @@ export class SavedReportsComponent implements OnInit {
       panelClass: 'snackbar-error',
     });
   }
+}
+
+/** Name ascending, ignoring case and accents, like the backend list. The sort is stable, so ties keep their order. */
+function compareByName(a: SavedReport, b: SavedReport): number {
+  return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
 }
 
 function runErrorMessage(status: number, code: string | undefined): string {

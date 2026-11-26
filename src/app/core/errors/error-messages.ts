@@ -36,6 +36,14 @@ export const SAVED_REPORT_RUN_FAILED_MESSAGE = 'No se pudo ejecutar el reporte. 
 export const REPORT_DELETED_MESSAGE = 'Reporte borrado correctamente.';
 export const REPORT_DELETE_FAILED_MESSAGE = 'No se pudo borrar el reporte. Inténtalo de nuevo más tarde.';
 
+/**
+ * Messages of updating a saved report. They are not in `CODE_MESSAGES` because `ENTITY_NOT_FOUND` means
+ * "already deleted" on this call and the failure text is specific to it. A duplicate name reuses
+ * `REPORT_NAME_CONFLICT_MESSAGE`.
+ */
+export const REPORT_UPDATED_MESSAGE = 'Reporte actualizado correctamente.';
+export const REPORT_UPDATE_FAILED_MESSAGE = 'No se pudo actualizar el reporte. Inténtalo de nuevo más tarde.';
+
 const CODE_MESSAGES:ReadonlyMap<string, string> = new Map([
   ['ACCESS_DENIED', NOT_ALLOWED_MESSAGE],
   ['ENTITY_NOT_FOUND', NOT_FOUND_MESSAGE],

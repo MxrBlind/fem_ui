@@ -3,7 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '@env/environment';
-import { ReportResult, SaveReportRequest, SavedReport } from '@features/reports/models/report.model';
+import {
+  ReportResult,
+  SaveReportRequest,
+  SavedReport,
+  UpdateSavedReportRequest,
+} from '@features/reports/models/report.model';
 
 @Injectable({ providedIn: 'root' })
 export class ReportService {
@@ -30,6 +35,14 @@ export class ReportService {
    */
   execute(id: number): Observable<ReportResult> {
     return this.http.post<ReportResult>(`${this.baseUrl}/saved/${id}/execute`, null);
+  }
+
+  /**
+   * Replaces the name and description of one of the caller's saved reports. The backend keeps the SQL, so it is
+   * never sent or received. A `null` description clears it.
+   */
+  update(id: number, request: UpdateSavedReportRequest): Observable<SavedReport> {
+    return this.http.put<SavedReport>(`${this.baseUrl}/saved/${id}`, request);
   }
 
   /** Permanently deletes one of the caller's saved reports. The backend answers `204` with an empty body. */

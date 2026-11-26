@@ -22,6 +22,7 @@ const report: SavedReport = {
   description: 'Solo activos',
   originalPrompt: 'secret original prompt',
   createdDate: '2026-11-22T01:00:00',
+  updatedDate: null,
   lastRunDate: '2026-11-23T10:30:00'
 };
 
