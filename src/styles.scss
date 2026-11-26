@@ -132,3 +132,19 @@ body {
   align-items: center;
   gap: 4px;
 }
+
+// Red outlined button for destructive actions (e.g. "Borrar"). Angular
+// Material M3 ignores the `color="warn"` input on buttons, so the red comes
+// from the outlined-button tokens fed with the theme's error color. Apply it
+// to a `mat-stroked-button`; it sets only the outlined tokens, so it has no
+// effect on other button variants.
+.danger-button {
+  @include mat.button-overrides(
+    (
+      outlined-label-text-color: var(--mat-sys-error),
+      outlined-outline-color: var(--mat-sys-error),
+      outlined-state-layer-color: var(--mat-sys-error),
+      outlined-ripple-color: color-mix(in srgb, var(--mat-sys-error) 12%, transparent),
+    )
+  );
+}

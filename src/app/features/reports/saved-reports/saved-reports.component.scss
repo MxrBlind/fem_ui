@@ -18,26 +18,67 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
-.saved-reports__heading {
-  margin: 0 0 16px;
+// The card is a size container, so the layout reacts to the room the card
+// really has (the shell sidenav takes 240px that a viewport query ignores).
+// Narrow card: field, actions and details stack in one column.
+// Wide card (480px field + 24px gap + at least 280px of details + 32px of
+// padding = 816px): the details sit beside the field and the actions, and the
+// field column keeps its previous 480px maximum.
+.saved-reports__card {
+  container-type: inline-size;
+}
+
+.saved-reports__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'field'
+    'actions'
+    'details';
+  gap: 16px;
+  padding: 16px;
+}
+
+@container (min-width: 816px) {
+  .saved-reports__layout {
+    grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
+    // The details span all three rows; the flexible last row absorbs their
+    // extra height so the actions stay directly under the field.
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'field details'
+      'actions details'
+      '. details';
+    column-gap: 24px;
+    row-gap: 8px;
+    align-items: start;
+  }
 }
 
 .saved-reports__field {
+  grid-area: field;
   width: 100%;
-  max-width: 480px;
 }
 
-.saved-reports__card {
-  display: block;
-  max-width: 480px;
-  padding: 16px;
+.saved-reports__actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.saved-reports__details {
+  grid-area: details;
+  min-width: 0;
+}
+
+.saved-reports__name {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
 }
 
 .saved-reports__description {
   margin: 0;
   white-space: pre-line;
-}
-
-.saved-reports__actions {
-  gap: 8px;
+  overflow-wrap: anywhere;
 }

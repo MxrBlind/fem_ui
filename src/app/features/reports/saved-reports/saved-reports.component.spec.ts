@@ -166,14 +166,34 @@ describe('SavedReportsComponent', () => {
   });
 
   describe('dropdown', () => {
-    it('shows "Reportes guardados:" and a labelled select', () => {
+    it('shows a labelled select and no "Reportes guardados:" heading', () => {
       const h = setup();
       load(h);
 
-      expect(text(byTestId(h.el, 'saved-reports-heading'))).toBe('Reportes guardados:');
+      expect(byTestId(h.el, 'saved-reports-heading')).toBeNull();
+      expect(h.el.textContent).not.toContain('Reportes guardados:');
       const select = byTestId(h.el, 'saved-reports-select');
       expect(select).not.toBeNull();
       expect(text(h.el.querySelector('mat-label'))).toBe('Reporte');
+    });
+
+    it('puts the select inside the card right after load, before any selection', () => {
+      const h = setup();
+      load(h);
+
+      const card = byTestId(h.el, 'saved-report-card') as HTMLElement;
+      expect(card).not.toBeNull();
+      expect(card.contains(byTestId(h.el, 'saved-reports-select'))).toBe(true);
+    });
+
+    it('keeps the select inside the card after a selection', async () => {
+      const h = setup();
+      load(h);
+
+      await selectOption(h, 0);
+
+      const card = byTestId(h.el, 'saved-report-card') as HTMLElement;
+      expect(card.contains(byTestId(h.el, 'saved-reports-select'))).toBe(true);
     });
 
     it('lists one option per report by name, in the received order', async () => {
@@ -189,8 +209,56 @@ describe('SavedReportsComponent', () => {
       const h = setup();
       load(h);
 
-      expect(byTestId(h.el, 'saved-report-card')).toBeNull();
+      expect(byTestId(h.el, 'saved-report-card')).not.toBeNull();
+      expect(byTestId(h.el, 'saved-reports-select')).not.toBeNull();
+      expect(byTestId(h.el, 'saved-report-name')).toBeNull();
+      expect(byTestId(h.el, 'saved-report-description')).toBeNull();
       expect(byTestId(h.el, 'saved-report-run-btn')).toBeNull();
+      expect(byTestId(h.el, 'saved-report-update-btn')).toBeNull();
+      expect(byTestId(h.el, 'saved-report-delete-btn')).toBeNull();
+    });
+  });
+
+  describe('card structure', () => {
+    it('keeps the DOM order field, actions, details so the tab and reading order follow the layout', async () => {
+      const h = setup();
+      load(h);
+
+      await selectOption(h, 0);
+
+      const select = byTestId(h.el, 'saved-reports-select') as HTMLElement;
+      const actions = byTestId(h.el, 'saved-report-actions') as HTMLElement;
+      const details = byTestId(h.el, 'saved-report-details') as HTMLElement;
+      expect(actions).not.toBeNull();
+      expect(details).not.toBeNull();
+      const follows = (a: HTMLElement, b: HTMLElement): boolean =>
+        Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(follows(select, actions)).toBe(true);
+      expect(follows(actions, details)).toBe(true);
+    });
+
+    it('places the three buttons in one container, in the order Ejecutar, Actualizar, Borrar', async () => {
+      const h = setup();
+      load(h);
+
+      await selectOption(h, 0);
+
+      const actions = byTestId(h.el, 'saved-report-actions') as HTMLElement;
+      const labels = Array.from(actions.querySelectorAll('button')).map((b) => text(b));
+      expect(labels).toEqual(['Ejecutar', 'Actualizar', 'Borrar']);
+    });
+
+    it('renders the name and description inside the details block of the card', async () => {
+      const h = setup();
+      load(h);
+
+      await selectOption(h, 0);
+
+      const card = byTestId(h.el, 'saved-report-card') as HTMLElement;
+      const details = byTestId(h.el, 'saved-report-details') as HTMLElement;
+      expect(card.contains(details)).toBe(true);
+      expect(details.contains(byTestId(h.el, 'saved-report-name'))).toBe(true);
+      expect(details.contains(byTestId(h.el, 'saved-report-description'))).toBe(true);
     });
   });
 
@@ -277,6 +345,21 @@ describe('SavedReportsComponent', () => {
       expect(text(button)).toBe(label);
       expect(button.disabled).toBe(false);
       expect(button.getAttribute('type')).toBe('button');
+    });
+
+    it('marks only "Borrar" as a danger button and no longer uses the ineffective color attribute', async () => {
+      const h = setup();
+      load(h);
+
+      await selectOption(h, 0);
+
+      const remove = byTestId(h.el, 'saved-report-delete-btn') as HTMLButtonElement;
+      expect(remove.classList.contains('danger-button')).toBe(true);
+      expect(remove.hasAttribute('color')).toBe(false);
+      for (const id of ['saved-report-run-btn', 'saved-report-update-btn']) {
+        const other = byTestId(h.el, id) as HTMLButtonElement;
+        expect(other.classList.contains('danger-button')).toBe(false);
+      }
     });
 
     it.each(buttonIds)('does nothing when "%s" is clicked', async (_label, id) => {
