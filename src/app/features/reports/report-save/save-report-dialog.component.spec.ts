@@ -458,6 +458,7 @@ describe('SaveReportDialogComponent', () => {
       startSaving(harness);
 
       const spinner = submitButton(harness.fixture).querySelector('mat-progress-spinner');
+      expect(spinner?.classList).toContain('button-spinner');
       expect(spinner?.getAttribute('aria-hidden')).toBe('true');
       expect(submitButton(harness.fixture).textContent).toContain('Guardar');
       expect(submitButton(harness.fixture).disabled).toBe(true);

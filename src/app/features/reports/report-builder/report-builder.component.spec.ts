@@ -198,7 +198,7 @@ describe('ReportBuilderComponent', () => {
       expect(generateButton(h.fixture).disabled).toBe(true);
       const spinner = root(h.fixture).querySelector('mat-progress-spinner');
       expect(spinner).not.toBeNull();
-      expect(spinner?.classList).toContain('report-builder__spinner');
+      expect(spinner?.classList).toContain('button-spinner');
       expect(spinner?.getAttribute('aria-hidden')).toBe('true');
       expect(generateButton(h.fixture).textContent).toContain('Generando…');
     });

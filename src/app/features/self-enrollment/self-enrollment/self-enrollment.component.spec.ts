@@ -296,7 +296,10 @@ describe('SelfEnrollmentComponent', () => {
       submitButton(h.el).click();
       h.fixture.detectChanges();
       expect(submitButton(h.el).disabled).toBe(true);
-      expect(submitButton(h.el).querySelector('mat-progress-spinner')).not.toBeNull();
+      const spinner = submitButton(h.el).querySelector('mat-progress-spinner');
+      expect(spinner).not.toBeNull();
+      expect(spinner?.classList).toContain('button-spinner');
+      expect(spinner?.getAttribute('aria-hidden')).toBe('true');
     });
 
     it('does not send a request when the session user is missing and shows the error message', async () => {

@@ -983,6 +983,7 @@ describe('SavedReportsComponent', () => {
         expect(text(button)).toBe('Ejecutando…');
         const spinner = button.querySelector('mat-progress-spinner') as HTMLElement;
         expect(spinner).not.toBeNull();
+        expect(spinner.classList).toContain('button-spinner');
         expect(spinner.getAttribute('aria-hidden')).toBe('true');
       });
 

@@ -148,3 +148,19 @@ body {
     )
   );
 }
+
+// Spinner inside a button, shown next to the button's text label while a
+// request is in flight. Gives the spinner an 8px gap to the label and aligns it
+// vertically with the text, so it never overlaps the label. Apply it to the
+// `mat-progress-spinner` together with `aria-hidden="true"` (the label is what
+// screen readers announce). It sets no color or size: those come from the theme
+// and the `diameter` input. Not for a spinner that replaces the label (login).
+// The selector is qualified with the element name on purpose: Material sets
+// `display: block` on `.mat-mdc-progress-spinner` with a single-class selector
+// and injects it after this file, so a bare class would lose and the spinner
+// would sit on top of the label.
+mat-progress-spinner.button-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
