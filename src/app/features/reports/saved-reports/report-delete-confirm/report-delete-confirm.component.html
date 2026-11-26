@@ -1,0 +1,36 @@
+<h2 mat-dialog-title>{{ title }}</h2>
+
+<mat-dialog-content>
+  <p class="mat-body-large">{{ message }}</p>
+  <p class="report-delete__name mat-body-medium" data-testid="report-delete-name">{{ reportName }}</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button
+    mat-stroked-button
+    type="button"
+    data-testid="report-delete-cancel"
+    (click)="cancel()"
+    [disabled]="deleting()"
+  >
+    No
+  </button>
+  <button
+    mat-stroked-button
+    class="danger-button"
+    type="button"
+    data-testid="report-delete-confirm"
+    (click)="onConfirm()"
+    [disabled]="deleting()"
+  >
+    @if (deleting()) {
+      <mat-progress-spinner
+        mode="indeterminate"
+        diameter="18"
+        class="report-delete__spinner"
+        aria-hidden="true"
+      />
+    }
+    Sí
+  </button>
+</mat-dialog-actions>

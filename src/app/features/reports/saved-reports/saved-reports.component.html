@@ -47,7 +47,13 @@
               {{ executing() ? 'Ejecutando…' : 'Ejecutar' }}
             </button>
             <button mat-stroked-button type="button" data-testid="saved-report-update-btn">Actualizar</button>
-            <button mat-stroked-button class="danger-button" type="button" data-testid="saved-report-delete-btn">
+            <button
+              mat-stroked-button
+              class="danger-button"
+              type="button"
+              data-testid="saved-report-delete-btn"
+              (click)="onDelete()"
+            >
               Borrar
             </button>
           </div>

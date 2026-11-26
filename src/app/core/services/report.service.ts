@@ -31,4 +31,9 @@ export class ReportService {
   execute(id: number): Observable<ReportResult> {
     return this.http.post<ReportResult>(`${this.baseUrl}/saved/${id}/execute`, null);
   }
+
+  /** Permanently deletes one of the caller's saved reports. The backend answers `204` with an empty body. */
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/saved/${id}`);
+  }
 }

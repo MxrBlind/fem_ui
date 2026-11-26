@@ -1,23 +1,41 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subscription, finalize } from 'rxjs';
 
 import { parseApiError } from '@core/errors/api-error';
 import {
   NOT_FOUND_MESSAGE,
+  REPORT_DELETED_MESSAGE,
   SAVED_REPORT_EXECUTION_FAILED_MESSAGE,
   SAVED_REPORT_RUN_FAILED_MESSAGE,
 } from '@core/errors/error-messages';
 import { ReportService } from '@core/services/report.service';
 import { ReportResult, SavedReport } from '../models/report.model';
 import { ReportResultComponent } from '../report-result/report-result.component';
+import {
+  ReportDeleteConfirmComponent,
+  ReportDeleteConfirmData,
+  ReportDeleteConfirmResult,
+} from './report-delete-confirm/report-delete-confirm.component';
 
 export const SAVED_REPORTS_LOAD_FAILED_MESSAGE = 'No se pudieron cargar los reportes guardados.';
 export const NO_SAVED_REPORTS_MESSAGE = 'No hay reportes guardados.';
@@ -44,6 +62,11 @@ export class SavedReportsComponent implements OnInit {
   private readonly reportService = inject(ReportService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly injector = inject(Injector);
+
+  /** Absent while the list is loading, failed or empty. */
+  private readonly reportSelect = viewChild(MatSelect);
 
   readonly noSavedReportsMessage = NO_SAVED_REPORTS_MESSAGE;
 
@@ -107,6 +130,49 @@ export class SavedReportsComponent implements OnInit {
         next: (report) => this.result.set(report),
         error: (err: unknown) => this.handleRunError(err),
       });
+  }
+
+  /** Asks for confirmation; the dialog makes the request and reports how it ended. */
+  onDelete(): void {
+    const report = this.selectedReport();
+    if (report === null) return;
+
+    this.dialog
+      .open<ReportDeleteConfirmComponent, ReportDeleteConfirmData, ReportDeleteConfirmResult>(
+        ReportDeleteConfirmComponent,
+        { data: { report }, disableClose: true }
+      )
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((outcome) => this.handleDeleteOutcome(report.id, outcome));
+  }
+
+  /** `undefined` means the dialog was dismissed, so nothing changes. */
+  private handleDeleteOutcome(reportId: number, outcome: ReportDeleteConfirmResult | undefined): void {
+    if (outcome === undefined) return;
+
+    this.removeReport(reportId);
+    if (outcome.outcome === 'deleted') {
+      this.snackBar.open(REPORT_DELETED_MESSAGE, 'Cerrar', { duration: 3000 });
+      return;
+    }
+    // `not-found`: the report is already gone from the server, so it leaves the list too.
+    this.snackBar.open(NOT_FOUND_MESSAGE, 'Cerrar', { duration: 5000, panelClass: 'snackbar-error' });
+  }
+
+  /** The list is updated locally: a refetch would add a request for something the page already knows. */
+  private removeReport(reportId: number): void {
+    if (this.selectedReportId() === reportId) {
+      // Unsubscribing cancels a run in flight and runs `finalize`, so its late response is never shown.
+      this.runSubscription?.unsubscribe();
+      this.runSubscription = null;
+      this.result.set(null);
+      this.selectedReportId.set(null);
+    }
+    this.reports.update((reports) => reports.filter((report) => report.id !== reportId));
+
+    // `restoreFocus` would target the "Borrar" button, which is gone once the selection clears.
+    afterNextRender(() => this.reportSelect()?.focus(), { injector: this.injector });
   }
 
   /**

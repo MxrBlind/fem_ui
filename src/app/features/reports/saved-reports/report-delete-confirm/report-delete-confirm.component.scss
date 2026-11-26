@@ -1,0 +1,16 @@
+:host {
+  display: block;
+  min-width: 380px;
+}
+
+.report-delete__name {
+  margin: 8px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.report-delete__spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
