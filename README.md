@@ -44,7 +44,7 @@ fem-front/
 │   │   │   ├── auth/                 # Guards, HTTP interceptor, RBAC, hasRole directive, bootstrap
 │   │   │   ├── models/
 │   │   │   └── services/             # auth, user, profile, course, cycle, enrollment, grade,
-│   │   │                             #   student, teacher, subject, category, level, token-storage
+│   │   │                             #   student, teacher, subject, category, level, report, token-storage
 │   │   ├── features/                 # Lazy-loaded feature areas
 │   │   │   ├── auth/login/
 │   │   │   ├── shell/                # Authenticated layout + child routes (sidenav, toolbar)
@@ -57,7 +57,9 @@ fem-front/
 │   │   │   ├── students/
 │   │   │   ├── teachers/
 │   │   │   ├── grades/
-│   │   │   └── enrollments/          # list, new, edit, delete-confirm, models
+│   │   │   ├── enrollments/          # list, new, edit, delete-confirm, models
+│   │   │   ├── self-enrollment/      # Student pre-enrollment page + enrollment announcement
+│   │   │   └── reports/              # AI report builder, result table, save dialog, saved reports
 │   │   ├── shared/                   # Cross-feature building blocks (e.g. table-export)
 │   │   ├── app.config.ts             # Application providers
 │   │   ├── app.routes.ts             # Root routes (login + authenticated shell)
@@ -92,7 +94,7 @@ npm install
 
 # 2. Configure environments
 #    src/environments/environment.ts       -> { production: false, apiBaseUrl: 'http://localhost:8080' }
-#    src/environments/environment.prod.ts  -> { production: true,  apiBaseUrl: '/api' }
+#    src/environments/environment.prod.ts  -> { production: true,  apiBaseUrl: '<deployed backend URL>' }
 
 # 3. Start the dev server (http://localhost:4200)
 npm start
@@ -134,6 +136,8 @@ All development follows the rules in [`docs/base-standards.md`](docs/base-standa
 | [`docs/data-model.md`](docs/data-model.md) | Domain entities, relationships, and ER diagram |
 | [`docs/development_guide.md`](docs/development_guide.md) | Environment setup and testing instructions |
 | [`docs/openspec-tasks-mandatory-steps.md`](docs/openspec-tasks-mandatory-steps.md) | Mandatory steps for OpenSpec `tasks.md` artifacts |
+
+> **Note:** `docs/`, `openspec/`, `.claude/` and `CLAUDE.md` are listed in `.gitignore` and are **not versioned**. A fresh clone will not contain them; the links above only work on a machine that has a local copy.
 
 ---
 
