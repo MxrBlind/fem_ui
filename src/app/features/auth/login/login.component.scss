@@ -23,8 +23,8 @@
 }
 
 .login-card__welcome {
-  background: #0f88cf;
-  color: #fff;
+  background: var(--app-login-welcome-bg);
+  color: var(--mat-sys-on-primary);
   display: flex;
   flex-direction: column;
   align-items: center;

@@ -47,6 +47,15 @@ html {
     )
   );
 
+  // Brand colors that no Material system token (`--mat-sys-*`) expresses and
+  // that must stay exact. Declared once here and only read with `var()` in
+  // component styles, never as hex literals or Sass color variables. Use a
+  // `--mat-sys-*` token whenever one fits. These are light-mode values (the app
+  // pins `color-scheme: light`).
+  --app-login-welcome-bg: #0f88cf;
+  --app-profile-avatar-bg: #8da9dc;
+  --app-profile-avatar-fg: #3c5280;
+
   // Berry uses rounded rectangles (~8px) instead of the M3 pill/large radii.
   @include mat.button-overrides(
     (
