@@ -28,6 +28,7 @@ The authoritative REST contract for all of the above lives in [`docs/api-spec.ym
 | State / data | Angular **Signals** (preferred) + **RxJS 7**, `HttpClient` |
 | Build | Angular CLI (`@angular/build:application`) |
 | Unit tests | **Vitest** via `@angular/build:unit-test` (`ng test`) + `jsdom` |
+| Linting | **ESLint** with `angular-eslint` (`ng lint`) |
 | Formatting | **Prettier** |
 
 > Do **not** introduce Bootstrap, Tailwind, or additional icon/CSS-utility packages — Material + CDK cover the UI. Style custom components with `--mat-sys-*` CSS variables, never hardcoded hex colors. Full conventions: [`docs/frontend-standards.md`](docs/frontend-standards.md).
@@ -71,7 +72,7 @@ fem-front/
 ├── docs/                             # Project standards & specifications (see below)
 ├── .claude/                          # AI agents, skills, commands & settings
 ├── openspec/                         # Spec-driven change workflow (changes, specs, config)
-└── angular.json / package.json / tsconfig*.json
+└── angular.json / package.json / tsconfig*.json / eslint.config.js
 ```
 
 **Routing** — `app.routes.ts` exposes `/login` and an authenticated shell at `''` (guarded by `authGuard`) that lazy-loads `shell.routes.ts`; unknown paths redirect to `/login`. Feature routes inside the shell are additionally gated by `roleGuard`.
@@ -108,6 +109,7 @@ npm start
 | `npm run build` | Production build |
 | `npm run watch` | Development build in watch mode |
 | `npm test` | Run unit tests (Vitest via `ng test`) |
+| `npm run lint` | Lint TypeScript and HTML templates (`ng lint`, exits 0 when there are no errors; warnings allowed) |
 
 For step-by-step environment and testing details, see [`docs/development_guide.md`](docs/development_guide.md).
 

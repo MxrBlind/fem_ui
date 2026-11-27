@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, Inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import {
@@ -32,10 +32,8 @@ export interface ExportRowCapDialogData {
   `,
 })
 export class ExportRowCapDialogComponent {
-  constructor(
-    private readonly ref: MatDialogRef<ExportRowCapDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public readonly data: ExportRowCapDialogData
-  ) {}
+  private readonly ref = inject(MatDialogRef<ExportRowCapDialogComponent>);
+  readonly data = inject<ExportRowCapDialogData>(MAT_DIALOG_DATA);
 
   close(): void {
     this.ref.close();

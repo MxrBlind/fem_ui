@@ -4,10 +4,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { signal } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { By } from '@angular/platform-browser';
-import { Subject, of } from 'rxjs';
+import { Subject } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '@core/services/auth.service';
@@ -259,7 +259,7 @@ describe('EnrollmentListComponent', () => {
     it('onCreate opens the new-enrollment dialog', () => {
       const afterClosed$ = new Subject<EnrollmentDto | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture } = setup(admin);
       fixture.componentInstance.onCreate();
       expect(openSpy).toHaveBeenCalled();
@@ -270,7 +270,7 @@ describe('EnrollmentListComponent', () => {
     it('onDelete opens EnrollmentDeleteConfirmComponent with correct config and data', () => {
       const afterClosed$ = new Subject<boolean | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture } = setup(admin);
 
       const row = fixture.componentInstance.dataSource.data[0];
@@ -292,7 +292,7 @@ describe('EnrollmentListComponent', () => {
     it('on confirm=true, issues DELETE, refreshes list, shows success snackbar', () => {
       const afterClosed$ = new Subject<boolean | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture, http, snackOpen } = setup(admin);
 
       const row = fixture.componentInstance.dataSource.data[0];
@@ -319,7 +319,7 @@ describe('EnrollmentListComponent', () => {
     it('on confirm=false, does not issue DELETE and shows no snackbar', () => {
       const afterClosed$ = new Subject<boolean | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture, http, snackOpen } = setup(admin);
       const originalCallCount = snackOpen.mock.calls.length;
 
@@ -338,7 +338,7 @@ describe('EnrollmentListComponent', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const afterClosed$ = new Subject<boolean | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture, http, snackOpen } = setup(admin);
 
       const row = fixture.componentInstance.dataSource.data[0];
@@ -368,7 +368,7 @@ describe('EnrollmentListComponent', () => {
     it('onEdit opens EnrollmentEditComponent with correct config and data', () => {
       const afterClosed$ = new Subject<EnrollmentDto | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture } = setup(admin);
 
       const row = fixture.componentInstance.dataSource.data[0];
@@ -390,7 +390,7 @@ describe('EnrollmentListComponent', () => {
     it('on afterClosed() emitting a truthy DTO, re-fetches enrollment list and replaces dataSource.data', () => {
       const afterClosed$ = new Subject<EnrollmentDto | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture, http } = setup(admin);
 
       const row = fixture.componentInstance.dataSource.data[0];
@@ -410,7 +410,7 @@ describe('EnrollmentListComponent', () => {
     it('on afterClosed() emitting undefined, does not re-fetch and dataSource.data is unchanged', () => {
       const afterClosed$ = new Subject<EnrollmentDto | undefined>();
       const fakeRef = { afterClosed: () => afterClosed$.asObservable() };
-      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as any);
+      const openSpy = vi.spyOn(MatDialog.prototype, 'open').mockReturnValue(fakeRef as unknown as MatDialogRef<unknown>);
       const { fixture, http } = setup(admin);
 
       const row = fixture.componentInstance.dataSource.data[0];
