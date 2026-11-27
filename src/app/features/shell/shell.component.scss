@@ -72,9 +72,6 @@ mat-sidenav {
   }
 }
 
-$profile-avatar-bg: #8da9dc;
-$profile-avatar-fg: #3c5280;
-
 .sidebar-profile {
   display: flex;
   align-items: flex-start;
@@ -89,8 +86,8 @@ $profile-avatar-fg: #3c5280;
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: $profile-avatar-bg;
-    color: $profile-avatar-fg;
+    background: var(--app-profile-avatar-bg);
+    color: var(--app-profile-avatar-fg);
     font-weight: 700;
     font-size: 1.125rem;
     line-height: 1;

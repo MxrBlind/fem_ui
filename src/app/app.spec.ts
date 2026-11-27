@@ -16,6 +16,11 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
+  it('uses OnPush change detection', () => {
+    const definition = (App as unknown as { ɵcmp: { onPush: boolean } }).ɵcmp;
+    expect(definition.onPush).toBe(true);
+  });
+
   it('renders a router outlet for the shell', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
