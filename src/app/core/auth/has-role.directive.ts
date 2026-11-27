@@ -24,6 +24,8 @@ import { Role } from './rbac';
  *   <a *hasRole="['admin','teacher']" routerLink="/courses">Courses</a>
  */
 @Directive({
+  // The unprefixed `*hasRole` is the documented template API (see frontend-standards.md), used across the shell templates.
+  // eslint-disable-next-line @angular-eslint/directive-selector
   selector: '[hasRole]',
   standalone: true
 })

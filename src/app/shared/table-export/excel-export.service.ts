@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { Workbook, Worksheet } from 'exceljs';
+import type { Worksheet } from 'exceljs';
 import { ExcelExportConfig, ExcelExportColumn } from './excel-export.types';
 import { guardFormula } from './formula-guard.util';
 import { saveBlob } from './file-saver.util';
